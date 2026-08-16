@@ -21,7 +21,10 @@ def test_upload_and_search(tmp_path, monkeypatch):
     importlib.reload(main)
 
     fixture = tmp_path / "empty.csv"
-    fixture.write_text("scientific_name,common_name\n", encoding="utf-8")
+    fixture.write_text(
+        "scientific_name,common_name\nPlaceholderia testii,placeholder\n",
+        encoding="utf-8",
+    )
     ingest_file(fixture, db_path=db.DB_PATH, replace=True)
 
     with TestClient(main.app) as client:

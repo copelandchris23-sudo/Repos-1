@@ -1,6 +1,14 @@
 # Woody Plants Search
 
-A local search engine for the 2021 woody plant catalog. Search by common name, scientific name, family, hardiness, wildlife notes, and other traits. You can replace the index by uploading another CSV, TSV, or JSON file.
+A local search engine for woody plants. The default index combines:
+
+- The 2021 woody plant spreadsheet in this repo
+- [USDA PLANTS](https://plants.usda.gov/) woody taxa (public-domain U.S. government data)
+- [GlobalUsefulNativeTrees (GlobUNT)](https://doi.org/10.1038/s41598-023-39552-1) (CC BY)
+- [SF Plant Finder](https://data.sfgov.org/Energy-and-Environment/San-Francisco-Plant-Finder-Data/vmnk-skih) woody species (DataSF)
+- Woody/fruit-tree records from [OpenPlantDB](https://github.com/cwfrazier1/openplantdb) (CC0)
+
+Names already in the 2021 catalog are kept; open datasets only add species that are not already present.
 
 ## Run it
 
@@ -13,9 +21,13 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
-## Catalog
+## Refresh open datasets
 
-The default index is `data/Woody_Plant_Search_2021.csv`. Column names from that spreadsheet (`Botanic`, `comm_ful`, habit codes such as `T`/`S`, and the rest) are mapped automatically. Extra columns stay attached to each plant and remain full-text searchable.
+```bash
+python3 scripts/build_external_catalogs.py
+```
+
+That writes compact CSVs into `data/external/`. Restart the app or use **Restore combined catalog**.
 
 ## Upload another dataset
 

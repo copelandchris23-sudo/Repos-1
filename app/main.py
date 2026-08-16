@@ -7,8 +7,9 @@ from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.db import SEED_CSV, connect, init_db
-from app.ingest import ingest_file, ingest_rows, parse_tabular
+from app.catalog import load_default_catalog
+from app.db import connect, init_db
+from app.ingest import ingest_rows, parse_tabular
 from app.search import facets, get_plant, search_plants, stats, suggest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,8 +23,8 @@ def ensure_seeded() -> None:
         count = conn.execute("SELECT COUNT(*) AS n FROM plants").fetchone()["n"]
     finally:
         conn.close()
-    if count == 0 and SEED_CSV.exists():
-        ingest_file(SEED_CSV, replace=True)
+    if count == 0:
+        load_default_catalog()
 
 
 @asynccontextmanager
@@ -112,9 +113,9 @@ async def api_upload(
 
 @app.post("/api/reload-seed")
 def reload_seed() -> dict:
-    if not SEED_CSV.exists():
+    result = load_default_catalog()
+    if not result["sources"]:
         raise HTTPException(status_code=404, detail="Seed dataset is missing")
-    result = ingest_file(SEED_CSV, replace=True)
     result["stats"] = stats()
     return result
 

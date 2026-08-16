@@ -43,6 +43,23 @@ def test_habit_filter(tmp_path):
     assert names(found) == {"red-osier dogwood"}
 
 
+def test_skip_existing_binomials_when_merging(tmp_path):
+    db_path = tmp_path / "merge.db"
+    ingest_file(FIXTURE, db_path=db_path, replace=True)
+    extra = tmp_path / "usda_like.csv"
+    extra.write_text(
+        "scientific_name,common_name,family,catalog_source\n"
+        "Quercus alba,white oak,Fagaceae,USDA PLANTS\n"
+        "Tsuga canadensis,eastern hemlock,Pinaceae,USDA PLANTS\n",
+        encoding="utf-8",
+    )
+    result = ingest_file(extra, db_path=db_path, replace=False, skip_existing=True)
+    assert result["count"] == 1
+    assert result["skipped"] == 1
+    hemlock = search_plants("hemlock", db_path=db_path)
+    assert names(hemlock) == {"eastern hemlock"}
+
+
 def test_official_catalog_names_and_codes(tmp_path):
     db_path = load(tmp_path / "official.db", OFFICIAL)
     tsuga = search_plants("Tsuga", db_path=db_path)

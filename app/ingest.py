@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Any, Iterable
 
-from app.db import CANONICAL_FIELDS, connect, init_db, reset_plants, set_meta
+from app.db import CANONICAL_FIELDS, connect, get_meta, init_db, reset_plants, set_meta
 
 COLUMN_ALIASES = {
     "scientific_name": {
@@ -25,6 +25,8 @@ COLUMN_ALIASES = {
         "botanical name",
         "botanic",
         "botanic name",
+        "latin_name",
+        "latin name",
     },
     "synonyms": {"synonyms", "synonym", "other names", "aka"},
     "common_name": {
@@ -39,7 +41,7 @@ COLUMN_ALIASES = {
         "comm_ful",
         "common",
     },
-    "family": {"family", "plant family", "family_name"},
+    "family": {"family", "plant family", "family_name", "family name"},
     "genus": {"genus", "generic epithet", "generic"},
     "growth_habit": {
         "growth_habit",
@@ -133,6 +135,15 @@ DROUGHT_CODES = {
 
 def normalize_header(name: str) -> str:
     return re.sub(r"\s+", " ", name.strip().lower())
+
+
+def normalize_binomial(name: str) -> str:
+    cleaned = re.sub(r"[\"'].*", "", name or "")
+    cleaned = cleaned.replace("×", " ").replace(" x ", " ")
+    parts = [part for part in re.split(r"\s+", cleaned.strip().lower()) if part]
+    if len(parts) >= 2:
+        return f"{parts[0]} {parts[1]}"
+    return parts[0] if parts else ""
 
 
 def map_headers(headers: Iterable[str]) -> dict[str, str]:
@@ -392,6 +403,7 @@ def ingest_rows(
     db_path: Path | str | None = None,
     source_name: str = "upload",
     replace: bool = True,
+    skip_existing: bool = False,
 ) -> dict[str, Any]:
     header_map = map_headers(headers)
     records = [record_from_row(row, header_map) for row in rows]
@@ -405,16 +417,39 @@ def ingest_rows(
         init_db(conn)
         if replace:
             reset_plants(conn)
+        skipped = 0
+        if skip_existing:
+            seen = {
+                normalize_binomial(row["scientific_name"])
+                for row in conn.execute("SELECT scientific_name FROM plants")
+                if row["scientific_name"]
+            }
+            kept = []
+            for record in records:
+                key = normalize_binomial(record["scientific_name"])
+                if key and key in seen:
+                    skipped += 1
+                    continue
+                if key:
+                    seen.add(key)
+                kept.append(record)
+            records = kept
         insert_records(conn, records)
         mapped = sorted({field for field in header_map.values() if not field.startswith("extra:")})
         extras = sorted(
             header[6:] for header in header_map.values() if header.startswith("extra:")
         )
-        set_meta(conn, "source", source_name)
-        set_meta(conn, "count", str(len(records)))
+        previous = get_meta(conn, "source", "")
+        if replace or not previous:
+            set_meta(conn, "source", source_name)
+        elif source_name not in previous:
+            set_meta(conn, "source", f"{previous} + {source_name}")
+        total = conn.execute("SELECT COUNT(*) AS n FROM plants").fetchone()["n"]
+        set_meta(conn, "count", str(total))
         conn.commit()
         return {
             "count": len(records),
+            "skipped": skipped,
             "mapped_columns": mapped,
             "extra_columns": extras,
             "source": source_name,
@@ -423,7 +458,19 @@ def ingest_rows(
         conn.close()
 
 
-def ingest_file(path: Path, db_path: Path | str | None = None, replace: bool = True) -> dict[str, Any]:
+def ingest_file(
+    path: Path,
+    db_path: Path | str | None = None,
+    replace: bool = True,
+    skip_existing: bool = False,
+) -> dict[str, Any]:
     content = path.read_bytes()
     headers, rows = parse_tabular(path.name, content)
-    return ingest_rows(rows, headers, db_path=db_path, source_name=path.name, replace=replace)
+    return ingest_rows(
+        rows,
+        headers,
+        db_path=db_path,
+        source_name=path.name,
+        replace=replace,
+        skip_existing=skip_existing,
+    )

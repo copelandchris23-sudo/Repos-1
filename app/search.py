@@ -160,6 +160,7 @@ def stats(db_path: str | None = None) -> dict[str, Any]:
         return {
             "count": count,
             "source": get_meta(conn, "source", "none"),
+            "sources": [part.strip() for part in get_meta(conn, "source", "").split("+") if part.strip()],
             "fields": CANONICAL_FIELDS,
         }
     finally:

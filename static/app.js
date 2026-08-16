@@ -246,7 +246,7 @@ els.file.addEventListener("change", async () => {
 });
 
 els.reload.addEventListener("click", async () => {
-  els.uploadStatus.textContent = "Restoring 2021 catalog…";
+  els.uploadStatus.textContent = "Restoring combined catalog…";
   const result = await api("/api/reload-seed", { method: "POST" });
   els.uploadStatus.textContent = `Restored ${result.count.toLocaleString()} plants.`;
   state.offset = 0;
