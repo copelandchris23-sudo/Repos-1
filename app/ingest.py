@@ -89,6 +89,18 @@ COLUMN_ALIASES = {
     "shade_tolerance": {"shade_tolerance", "shade tolerance", "shade"},
     "lifespan": {"lifespan", "life span", "longevity"},
     "usda_symbol": {"usda_symbol", "usda symbol", "accepted symbol", "symbol", "plants symbol"},
+    "conservation_status": {
+        "conservation_status",
+        "conservation status",
+        "iucn",
+        "iucn status",
+        "iucn red list",
+        "red list",
+        "red list status",
+        "threat status",
+        "threatsearch",
+        "threat search",
+    },
 }
 
 _ALIAS_LOOKUP = {
@@ -114,6 +126,40 @@ LEAF_CODES = {
     "deciduous": "Deciduous",
     "e": "Evergreen",
     "evergreen": "Evergreen",
+}
+
+CONSERVATION_LABELS = {
+    "ex": "Extinct",
+    "extinct": "Extinct",
+    "ew": "Extinct in the Wild",
+    "extinct in the wild": "Extinct in the Wild",
+    "cr": "Critically Endangered",
+    "critically endangered": "Critically Endangered",
+    "critically endangerd": "Critically Endangered",
+    "en": "Endangered",
+    "endangered": "Endangered",
+    "vu": "Vulnerable",
+    "vulnerable": "Vulnerable",
+    "nt": "Near Threatened",
+    "near threatened": "Near Threatened",
+    "near-threatened": "Near Threatened",
+    "lc": "Least Concern",
+    "least concern": "Least Concern",
+    "dd": "Data Deficient",
+    "data deficient": "Data Deficient",
+    "ne": "Not Evaluated",
+    "not evaluated": "Not Evaluated",
+    "cd": "Conservation Dependent",
+    "conservation dependent": "Conservation Dependent",
+    "lr/cd": "Conservation Dependent",
+}
+
+THREATENED_STATUSES = {
+    "Vulnerable",
+    "Endangered",
+    "Critically Endangered",
+    "Extinct in the Wild",
+    "Extinct",
 }
 
 DROUGHT_CODES = {
@@ -232,6 +278,14 @@ def normalize_habit(value: str) -> str:
     return ", ".join(dict.fromkeys(codes)) if codes else value
 
 
+def normalize_conservation(value: str) -> str:
+    if not value:
+        return ""
+    cleaned = re.sub(r"\s+", " ", value.strip())
+    cleaned = re.sub(r"^lower risk[/: ]+", "", cleaned, flags=re.I)
+    return CONSERVATION_LABELS.get(cleaned.lower(), cleaned)
+
+
 def normalize_coded(value: str, table: dict[str, str]) -> str:
     if not value:
         return ""
@@ -283,7 +337,24 @@ def derived_search_terms(record: dict[str, str], extra: dict[str, Any]) -> list[
     edible = str(extra.get("Edible?") or extra.get("Edible") or "").strip().lower()
     if edible in {"y", "yes", "true", "*"}:
         terms.append("edible")
+    status = record.get("conservation_status", "").strip()
+    if status:
+        terms.append(status)
+        if status in THREATENED_STATUSES:
+            terms.append("threatened")
+            terms.append("conservation concern")
     return terms
+
+
+def apply_search_fields(record: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
+    extra_bits = [f"{key}: {value}" for key, value in extra.items() if value]
+    extra_bits.extend(derived_search_terms(record, extra))
+    record["extra_json"] = json.dumps(extra, ensure_ascii=False)
+    record["extra_text"] = " | ".join(extra_bits)
+    searchable = [record.get(field, "") for field in CANONICAL_FIELDS if record.get(field)]
+    searchable.append(record["extra_text"])
+    record["search_blob"] = " ".join(searchable)
+    return record
 
 
 def record_from_row(row: dict[str, Any], header_map: dict[str, str]) -> dict[str, Any]:
@@ -311,17 +382,10 @@ def record_from_row(row: dict[str, Any], header_map: dict[str, str]) -> dict[str
     record["growth_habit"] = normalize_habit(record.get("growth_habit", ""))
     record["leaf_retention"] = normalize_coded(record.get("leaf_retention", ""), LEAF_CODES)
     record["drought_tolerance"] = normalize_coded(record.get("drought_tolerance", ""), DROUGHT_CODES)
+    record["conservation_status"] = normalize_conservation(record.get("conservation_status", ""))
     if not record["genus"] and record["scientific_name"]:
         record["genus"] = record["scientific_name"].split()[0]
-
-    extra_bits = [f"{key}: {value}" for key, value in extra.items()]
-    extra_bits.extend(derived_search_terms(record, extra))
-    record["extra_json"] = json.dumps(extra, ensure_ascii=False)
-    record["extra_text"] = " | ".join(extra_bits)
-    searchable = [record[field] for field in CANONICAL_FIELDS if record[field]]
-    searchable.append(record["extra_text"])
-    record["search_blob"] = " ".join(searchable)
-    return record
+    return apply_search_fields(record, extra)
 
 
 def parse_tabular(filename: str, content: bytes) -> tuple[list[str], list[dict[str, Any]]]:
@@ -454,6 +518,84 @@ def ingest_rows(
             "extra_columns": extras,
             "source": source_name,
         }
+    finally:
+        conn.close()
+
+
+def lookup_from_csv(path: Path) -> dict[str, dict[str, Any]]:
+    headers, rows = parse_tabular(path.name, path.read_bytes())
+    header_map = map_headers(headers)
+    lookup: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        record = record_from_row(row, header_map)
+        key = normalize_binomial(record["scientific_name"])
+        if not key:
+            continue
+        current = lookup.get(key, {"_extra": {}})
+        for field in CANONICAL_FIELDS:
+            if record.get(field) and not current.get(field):
+                current[field] = record[field]
+        try:
+            extra = json.loads(record.get("extra_json") or "{}")
+        except json.JSONDecodeError:
+            extra = {}
+        merged_extra = current.get("_extra") or {}
+        for extra_key, extra_value in extra.items():
+            if extra_value and extra_key not in merged_extra:
+                merged_extra[extra_key] = extra_value
+        current["_extra"] = merged_extra
+        lookup[key] = current
+    return lookup
+
+
+def rebuild_fts(conn) -> None:
+    conn.execute("INSERT INTO plants_fts(plants_fts) VALUES('rebuild')")
+
+
+def enrich_empty_fields(
+    lookup: dict[str, dict[str, Any]],
+    fields: Iterable[str],
+    db_path: Path | str | None = None,
+) -> dict[str, Any]:
+    wanted = [field for field in fields if field in CANONICAL_FIELDS]
+    conn = connect(db_path)
+    try:
+        init_db(conn)
+        updated = 0
+        columns = [row[1] for row in conn.execute("PRAGMA table_info(plants)")]
+        for row in conn.execute("SELECT * FROM plants"):
+            plant = {column: row[column] for column in columns}
+            key = normalize_binomial(plant.get("scientific_name", ""))
+            source = lookup.get(key)
+            if not source:
+                continue
+            changed = False
+            for field in wanted:
+                if not str(plant.get(field) or "").strip() and source.get(field):
+                    plant[field] = source[field]
+                    changed = True
+            try:
+                extra = json.loads(plant.get("extra_json") or "{}")
+            except json.JSONDecodeError:
+                extra = {}
+            for extra_key, extra_value in (source.get("_extra") or {}).items():
+                if extra_value and extra_key not in extra:
+                    extra[extra_key] = extra_value
+                    changed = True
+            if not changed:
+                continue
+            apply_search_fields(plant, extra)
+            assignments = ", ".join(
+                f"{field} = ?" for field in [*wanted, "extra_json", "extra_text", "search_blob"]
+            )
+            values = [plant.get(field, "") for field in wanted]
+            values.extend([plant["extra_json"], plant["extra_text"], plant["search_blob"], plant["id"]])
+            conn.execute(f"UPDATE plants SET {assignments} WHERE id = ?", values)
+            updated += 1
+        if updated:
+            rebuild_fts(conn)
+        conn.commit()
+        return {"updated": updated, "fields": wanted}
     finally:
         conn.close()
 

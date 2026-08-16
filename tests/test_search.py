@@ -37,10 +37,23 @@ def test_search_extra_column_and_derived_trait(tmp_path):
     assert names(drought) == {"white oak"}
 
 
-def test_habit_filter(tmp_path):
-    db_path = load(tmp_path / "plants.db")
-    found = search_plants("", growth_habit="Shrub", db_path=db_path)
-    assert names(found) == {"red-osier dogwood"}
+def test_conservation_status_filter(tmp_path):
+    db_path = tmp_path / "status.db"
+    ingest_file(FIXTURE, db_path=db_path)
+    overlay = tmp_path / "status.csv"
+    overlay.write_text(
+        "scientific_name,conservation_status\n"
+        "Quercus alba,Vulnerable\n"
+        "Cornus sericea,Least Concern\n",
+        encoding="utf-8",
+    )
+    from app.ingest import enrich_empty_fields, lookup_from_csv
+
+    enrich_empty_fields(lookup_from_csv(overlay), ["conservation_status"], db_path=db_path)
+    threatened = search_plants("", conservation_status="threatened", db_path=db_path)
+    concern = search_plants("", conservation_status="Least Concern", db_path=db_path)
+    assert names(threatened) == {"white oak"}
+    assert names(concern) == {"red-osier dogwood"}
 
 
 def test_skip_existing_binomials_when_merging(tmp_path):

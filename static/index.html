@@ -18,9 +18,10 @@
         <p class="kicker">Catalog of trees, shrubs, and woody plants</p>
         <h1>Woody Plants</h1>
         <p class="lede">
-          Search the 2021 woody plant catalog plus open USDA, GlobUNT, SF Plant
-          Finder, and OpenPlantDB records. Upload another spreadsheet anytime
-          to replace the index.
+          Search the 2021 woody plant catalog plus Arnold Arboretum inventory,
+          USDA, GlobUNT, SF Plant Finder, and OpenPlantDB records. Conservation
+          status comes from the IUCN Red List and BGCI’s Global Tree Assessment.
+          Upload another spreadsheet anytime to replace the index.
         </p>
         <form class="search-form" id="search-form" autocomplete="off">
           <label class="sr-only" for="q">Search plants</label>
@@ -28,7 +29,7 @@
             id="q"
             name="q"
             type="search"
-            placeholder="Try oak, red maple, Quercus, drought tolerant…"
+            placeholder="Try oak, hemlock, endangered, drought tolerant…"
             autofocus
           />
           <button type="submit">Search</button>
@@ -42,6 +43,10 @@
           <section>
             <h2>Growth habit</h2>
             <div class="chip-row" id="habit-filters"></div>
+          </section>
+          <section>
+            <h2>Conservation</h2>
+            <div class="chip-row" id="conservation-filters"></div>
           </section>
           <section>
             <h2>Family</h2>

@@ -53,6 +53,7 @@ def api_search(
     family: str = "",
     growth_habit: str = "",
     genus: str = "",
+    conservation_status: str = "",
     limit: int = Query(default=25, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> dict:
@@ -62,6 +63,7 @@ def api_search(
         family=family,
         growth_habit=growth_habit,
         genus=genus,
+        conservation_status=conservation_status,
         limit=limit,
         offset=offset,
     )

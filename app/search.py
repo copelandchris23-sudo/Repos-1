@@ -6,6 +6,7 @@ import sqlite3
 from typing import Any
 
 from app.db import CANONICAL_FIELDS, connect, get_meta, init_db
+from app.ingest import THREATENED_STATUSES
 
 TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
 
@@ -51,6 +52,7 @@ def search_plants(
     family: str = "",
     growth_habit: str = "",
     genus: str = "",
+    conservation_status: str = "",
     limit: int = 25,
     offset: int = 0,
     db_path: str | None = None,
@@ -72,6 +74,14 @@ def search_plants(
     if growth_habit:
         filters.append("plants.growth_habit LIKE ?")
         params.append(f"%{growth_habit}%")
+    if conservation_status:
+        if conservation_status.strip().lower() == "threatened":
+            placeholders = ", ".join("?" for _ in THREATENED_STATUSES)
+            filters.append(f"plants.conservation_status IN ({placeholders})")
+            params.extend(sorted(THREATENED_STATUSES))
+        else:
+            filters.append("plants.conservation_status = ?")
+            params.append(conservation_status)
 
     where = " AND ".join(filters)
     order = "bm25(plants_fts), plants.common_name COLLATE NOCASE" if match else "plants.common_name COLLATE NOCASE, plants.scientific_name COLLATE NOCASE"
@@ -147,6 +157,7 @@ def facets(db_path: str | None = None) -> dict[str, list[dict[str, Any]]]:
             "family": grouped("family"),
             "genus": grouped("genus"),
             "growth_habit": grouped("growth_habit"),
+            "conservation_status": grouped("conservation_status"),
         }
     finally:
         conn.close()

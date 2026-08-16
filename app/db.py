@@ -27,6 +27,7 @@ CANONICAL_FIELDS = [
     "shade_tolerance",
     "lifespan",
     "usda_symbol",
+    "conservation_status",
 ]
 
 SCHEMA_SQL = """
@@ -49,6 +50,7 @@ CREATE TABLE IF NOT EXISTS plants (
     shade_tolerance TEXT NOT NULL DEFAULT '',
     lifespan TEXT NOT NULL DEFAULT '',
     usda_symbol TEXT NOT NULL DEFAULT '',
+    conservation_status TEXT NOT NULL DEFAULT '',
     extra_json TEXT NOT NULL DEFAULT '{}',
     extra_text TEXT NOT NULL DEFAULT '',
     search_blob TEXT NOT NULL DEFAULT ''
@@ -87,6 +89,10 @@ def connect(db_path: Path | str | None = None) -> sqlite3.Connection:
 
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA_SQL)
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(plants)")}
+    for field in CANONICAL_FIELDS:
+        if field not in existing:
+            conn.execute(f"ALTER TABLE plants ADD COLUMN {field} TEXT NOT NULL DEFAULT ''")
     conn.commit()
 
 

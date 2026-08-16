@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from app.ingest import ingest_file, map_headers, parse_tabular
+from app.ingest import enrich_empty_fields, ingest_file, lookup_from_csv, map_headers, parse_tabular
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample_plants.csv"
 OFFICIAL = Path(__file__).parent / "fixtures" / "official_format.csv"
@@ -20,12 +20,47 @@ def test_map_headers_understands_common_aliases():
     assert mapping["Notes"] == "extra:Notes"
 
 
+def test_map_headers_understands_conservation_status():
+    mapping = map_headers(["Botanic", "Conservation Status", "IUCN Red List"])
+    assert mapping["Botanic"] == "scientific_name"
+    assert mapping["Conservation Status"] == "conservation_status"
+    assert mapping["IUCN Red List"] == "extra:IUCN Red List"
+
+
 def test_map_headers_understands_2021_catalog_names():
     mapping = map_headers(["Botanic", "comm_ful", "Habit (tree, shrub, vine)", "Max Height (ft)"])
     assert mapping["Botanic"] == "scientific_name"
     assert mapping["comm_ful"] == "common_name"
     assert mapping["Habit (tree, shrub, vine)"] == "growth_habit"
     assert mapping["Max Height (ft)"] == "height_mature_ft"
+
+
+def test_enrich_fills_empty_conservation_without_overwriting(db_path, tmp_path):
+    ingest_file(FIXTURE, db_path=db_path)
+    overlay = tmp_path / "iucn.csv"
+    overlay.write_text(
+        "scientific_name,conservation_status,growth_habit\n"
+        "Quercus alba,Endangered,Tree\n"
+        "Acer rubrum,Least Concern,Tree\n",
+        encoding="utf-8",
+    )
+    first = enrich_empty_fields(lookup_from_csv(overlay), ["conservation_status"], db_path=db_path)
+    assert first["updated"] == 2
+    from app.search import search_plants
+
+    oak = search_plants("oak", db_path=db_path)["results"][0]
+    assert oak["conservation_status"] == "Endangered"
+    threatened = search_plants("threatened", db_path=db_path)
+    assert "white oak" in {row["common_name"] for row in threatened["results"]}
+
+    overlay.write_text(
+        "scientific_name,conservation_status\nQuercus alba,Least Concern\n",
+        encoding="utf-8",
+    )
+    second = enrich_empty_fields(lookup_from_csv(overlay), ["conservation_status"], db_path=db_path)
+    assert second["updated"] == 0
+    oak = search_plants("oak", db_path=db_path)["results"][0]
+    assert oak["conservation_status"] == "Endangered"
 
 
 def test_ingest_keeps_named_and_extra_columns(db_path):

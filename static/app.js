@@ -5,9 +5,12 @@ function esc(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 }
+
+const state = {
   q: "",
   family: "",
   growthHabit: "",
+  conservation: "",
   offset: 0,
   limit: 20,
 };
@@ -22,6 +25,7 @@ const els = {
   pager: document.getElementById("pager"),
   family: document.getElementById("family-filter"),
   habits: document.getElementById("habit-filters"),
+  conservation: document.getElementById("conservation-filters"),
   file: document.getElementById("file"),
   uploadStatus: document.getElementById("upload-status"),
   reload: document.getElementById("reload-seed"),
@@ -35,6 +39,7 @@ function params() {
     q: state.q,
     family: state.family,
     growth_habit: state.growthHabit,
+    conservation_status: state.conservation,
     limit: String(state.limit),
     offset: String(state.offset),
   });
@@ -51,7 +56,9 @@ async function api(path, options) {
 }
 
 function tagList(plant) {
-  return [plant.growth_habit, plant.family, plant.duration].filter(Boolean);
+  return [plant.growth_habit, plant.conservation_status, plant.family, plant.duration].filter(
+    Boolean
+  );
 }
 
 function renderResults(data) {
@@ -118,6 +125,17 @@ async function loadFacets() {
       )
       .join("");
   els.family.value = current;
+  if (els.conservation) {
+    els.conservation.innerHTML = [
+      ["All", ""],
+      ["Threatened", "threatened"],
+    ]
+      .map(([label, value]) => {
+        const active = state.conservation === value ? "active" : "";
+        return `<button type="button" class="chip ${active}" data-conservation="${value}">${label}</button>`;
+      })
+      .join("");
+  }
 }
 
 async function loadStats() {
@@ -137,6 +155,7 @@ async function openPlant(id) {
     ["Family", plant.family],
     ["Genus", plant.genus],
     ["Growth habit", plant.growth_habit],
+    ["Conservation status", plant.conservation_status],
     ["Duration", plant.duration],
     ["Native range", plant.native_status],
     ["Mature height (ft)", plant.height_mature_ft],
@@ -205,6 +224,17 @@ els.habits.addEventListener("click", (event) => {
   state.growthHabit = button.dataset.habit;
   state.offset = 0;
   for (const chip of els.habits.querySelectorAll(".chip")) {
+    chip.classList.toggle("active", chip === button);
+  }
+  runSearch();
+});
+
+els.conservation.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-conservation]");
+  if (!button) return;
+  state.conservation = button.dataset.conservation;
+  state.offset = 0;
+  for (const chip of els.conservation.querySelectorAll(".chip")) {
     chip.classList.toggle("active", chip === button);
   }
   runSearch();
