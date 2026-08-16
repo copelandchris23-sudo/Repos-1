@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Woody Plants Search</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <p class="kicker">Catalog of trees, shrubs, and woody plants</p>
+        <h1>Woody Plants</h1>
+        <p class="lede">
+          Search by common name, scientific name, family, or trait. Upload your own
+          spreadsheet to replace the starter USDA-derived index.
+        </p>
+        <form class="search-form" id="search-form" autocomplete="off">
+          <label class="sr-only" for="q">Search plants</label>
+          <input
+            id="q"
+            name="q"
+            type="search"
+            placeholder="Try oak, red maple, Quercus, drought tolerant…"
+            autofocus
+          />
+          <button type="submit">Search</button>
+          <ul class="suggest" id="suggest" hidden></ul>
+        </form>
+        <p class="meta" id="stats">Loading catalog…</p>
+      </header>
+
+      <div class="layout">
+        <aside class="filters">
+          <section>
+            <h2>Growth habit</h2>
+            <div class="chip-row" id="habit-filters"></div>
+          </section>
+          <section>
+            <h2>Family</h2>
+            <select id="family-filter">
+              <option value="">All families</option>
+            </select>
+          </section>
+          <section class="upload-card">
+            <h2>Upload a dataset</h2>
+            <p>
+              CSV, TSV, or JSON. Columns such as scientific name, common name,
+              family, and growth habit are mapped automatically. Extra columns stay
+              searchable.
+            </p>
+            <label class="upload-button">
+              Choose file
+              <input id="file" type="file" accept=".csv,.tsv,.txt,.json" />
+            </label>
+            <p class="upload-status" id="upload-status"></p>
+            <button type="button" class="text-button" id="reload-seed">
+              Restore starter catalog
+            </button>
+          </section>
+        </aside>
+
+        <main>
+          <div class="results-head">
+            <p id="result-count"></p>
+          </div>
+          <ol class="results" id="results"></ol>
+          <div class="pager" id="pager"></div>
+        </main>
+      </div>
+    </div>
+
+    <dialog id="detail">
+      <article class="detail-card">
+        <button class="close" id="close-detail" type="button">Close</button>
+        <div id="detail-body"></div>
+      </article>
+    </dialog>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
