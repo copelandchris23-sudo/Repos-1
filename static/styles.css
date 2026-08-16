@@ -103,18 +103,162 @@ h1 {
 
 .layout {
   display: grid;
-  grid-template-columns: 16.5rem minmax(0, 1fr);
+  grid-template-columns: 19.5rem minmax(0, 1fr);
   gap: 1.75rem;
+}
+
+.filters {
+  position: sticky;
+  top: 0.8rem;
+  max-height: calc(100vh - 1.6rem);
+  overflow: auto;
+  padding-right: 0.35rem;
 }
 
 .filters h2 {
   font-family: Fraunces, Georgia, serif;
   font-size: 1.05rem;
-  margin: 0 0 0.6rem;
+  margin: 0 0 0.55rem;
 }
 
-.filters section {
-  margin-bottom: 1.4rem;
+.filters section,
+.filter-group {
+  margin-bottom: 1.15rem;
+}
+
+.filter-toolbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.filter-toolbar h2 {
+  margin: 0;
+}
+
+.filter-help {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  margin: 0 0 1.1rem;
+}
+
+.filter-help a {
+  color: var(--leaf);
+}
+
+.check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.check-list.check-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.15rem 0.45rem;
+}
+
+.check {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.18rem 0.2rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.check:hover,
+.check.is-on {
+  background: #ece6d6;
+}
+
+.check input {
+  margin: 0;
+  accent-color: var(--moss);
+}
+
+.check:has(input:disabled) {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.check-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.filter-group input[type="search"] {
+  width: 100%;
+  margin-bottom: 0.45rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.45rem;
+}
+
+.filter-empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.2rem 0 0;
+}
+
+.filter-group[data-group="family"] .check-list {
+  max-height: 14rem;
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
+.filter-chip {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  cursor: pointer;
+}
+
+.results-head {
+  margin-bottom: 0.7rem;
+}
+
+.genus-group {
+  list-style: none;
+}
+
+.genus-group ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.genus-heading {
+  font-family: Fraunces, Georgia, serif;
+  font-size: 1.15rem;
+  margin: 0.85rem 0 0.45rem;
+  color: var(--bark);
+}
+
+.genus-group:first-child .genus-heading {
+  margin-top: 0;
 }
 
 .chip-row {

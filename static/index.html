@@ -18,11 +18,9 @@
         <p class="kicker">Catalog of trees, shrubs, and woody plants</p>
         <h1>Woody Plants</h1>
         <p class="lede">
-          Search the 2021 woody plant catalog plus Arnold Arboretum inventory,
-          Minnesota cold-hardiness ratings, Trees and Shrubs Online, USDA, GlobUNT,
-          SF Plant Finder, and OpenPlantDB records. Conservation status comes from
-          the IUCN Red List and BGCI’s Global Tree Assessment. Upload another
-          spreadsheet anytime to replace the index.
+          Search by name, or identify a plant by checking the traits you can see.
+          Each checkbox keeps plants that have that characteristic and removes the
+          rest. Add traits one at a time until the list is small enough to browse.
         </p>
         <form class="search-form" id="search-form" autocomplete="off">
           <label class="sr-only" for="q">Search plants</label>
@@ -40,21 +38,20 @@
       </header>
 
       <div class="layout">
-        <aside class="filters">
-          <section>
-            <h2>Growth habit</h2>
-            <div class="chip-row" id="habit-filters"></div>
-          </section>
-          <section>
-            <h2>Conservation</h2>
-            <div class="chip-row" id="conservation-filters"></div>
-          </section>
-          <section>
-            <h2>Family</h2>
-            <select id="family-filter">
-              <option value="">All families</option>
-            </select>
-          </section>
+        <aside class="filters" id="filter-panel">
+          <div class="filter-toolbar">
+            <h2>Plant characteristics</h2>
+            <button type="button" class="text-button" id="clear-filters">
+              Clear all filters
+            </button>
+          </div>
+          <p class="filter-help">
+            Same idea as the
+            <a href="https://landscapeplants.oregonstate.edu/node/2163">Oregon State woody plant search</a>:
+            checkboxes are filters, not just labels. Values in one group are combined;
+            every group you use narrows the list further.
+          </p>
+          <div id="filter-groups"></div>
           <section class="upload-card">
             <h2>Upload a dataset</h2>
             <p>
@@ -76,6 +73,7 @@
         <main>
           <div class="results-head">
             <p id="result-count"></p>
+            <div class="active-filters" id="active-filters"></div>
           </div>
           <ol class="results" id="results"></ol>
           <div class="pager" id="pager"></div>

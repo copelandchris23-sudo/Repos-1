@@ -1,0 +1,7 @@
+scientific_name,common_name,family,genus,growth_habit,leaf_retention,usda_hardiness_zone,height_mature_ft,flower_color,bloom_period,drought_tolerance,shade_tolerance,conservation_status
+Quercus alba,white oak,Fagaceae,Quercus,Tree,Deciduous,4-5,90,Yellow,Spring,High,Intolerant,Vulnerable
+Acer rubrum,red maple,Sapindaceae,Acer,Tree,Deciduous,3-9,70,Red,Spring,Medium,Tolerant,Least Concern
+Cornus sericea,red-osier dogwood,Cornaceae,Cornus,Shrub,Deciduous,2,10,White,Late Spring,Low,Tolerant,Least Concern
+Pinus strobus,eastern white pine,Pinaceae,Pinus,Tree,Evergreen,3,80,Yellow,Spring,Medium,Intermediate,Least Concern
+Wisteria sinensis,Chinese wisteria,Fabaceae,Wisteria,Vine,Deciduous,5,30,Purple,Spring,Medium,partial,Least Concern
+Tsuga canadensis,eastern hemlock,Pinaceae,Tsuga,Tree,Evergreen,3,105,,Spring,Low,Tolerant,Near Threatened

@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from app.catalog import load_default_catalog
 from app.db import connect, init_db
 from app.ingest import ingest_rows, parse_tabular
+from app.filters import selected_filters
 from app.search import facets, get_plant, search_plants, stats, suggest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,20 +51,42 @@ def api_stats() -> dict:
 @app.get("/api/search")
 def api_search(
     q: str = "",
-    family: str = "",
-    growth_habit: str = "",
+    family: list[str] = Query(default=[]),
+    growth_habit: list[str] = Query(default=[]),
     genus: str = "",
-    conservation_status: str = "",
+    conservation_status: list[str] = Query(default=[]),
+    foliage_type: list[str] = Query(default=[]),
+    leaf_retention: list[str] = Query(default=[]),
+    hardiness_zone: list[str] = Query(default=[]),
+    height: list[str] = Query(default=[]),
+    flower_color: list[str] = Query(default=[]),
+    bloom_period: list[str] = Query(default=[]),
+    drought_tolerance: list[str] = Query(default=[]),
+    light: list[str] = Query(default=[]),
     limit: int = Query(default=25, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> dict:
     ensure_seeded()
+    selected = selected_filters(
+        {
+            "family": family,
+            "growth_habit": growth_habit,
+            "genus": genus,
+            "conservation_status": conservation_status,
+            "foliage_type": foliage_type,
+            "leaf_retention": leaf_retention,
+            "hardiness_zone": hardiness_zone,
+            "height": height,
+            "flower_color": flower_color,
+            "bloom_period": bloom_period,
+            "drought_tolerance": drought_tolerance,
+            "light": light,
+        }
+    )
     return search_plants(
         query=q,
-        family=family,
-        growth_habit=growth_habit,
+        selected=selected,
         genus=genus,
-        conservation_status=conservation_status,
         limit=limit,
         offset=offset,
     )
@@ -76,9 +99,39 @@ def api_suggest(q: str = "", limit: int = Query(default=8, ge=1, le=20)) -> dict
 
 
 @app.get("/api/facets")
-def api_facets() -> dict:
+def api_facets(
+    q: str = "",
+    family: list[str] = Query(default=[]),
+    growth_habit: list[str] = Query(default=[]),
+    genus: str = "",
+    conservation_status: list[str] = Query(default=[]),
+    foliage_type: list[str] = Query(default=[]),
+    leaf_retention: list[str] = Query(default=[]),
+    hardiness_zone: list[str] = Query(default=[]),
+    height: list[str] = Query(default=[]),
+    flower_color: list[str] = Query(default=[]),
+    bloom_period: list[str] = Query(default=[]),
+    drought_tolerance: list[str] = Query(default=[]),
+    light: list[str] = Query(default=[]),
+) -> dict:
     ensure_seeded()
-    return facets()
+    selected = selected_filters(
+        {
+            "family": family,
+            "growth_habit": growth_habit,
+            "genus": genus,
+            "conservation_status": conservation_status,
+            "foliage_type": foliage_type,
+            "leaf_retention": leaf_retention,
+            "hardiness_zone": hardiness_zone,
+            "height": height,
+            "flower_color": flower_color,
+            "bloom_period": bloom_period,
+            "drought_tolerance": drought_tolerance,
+            "light": light,
+        }
+    )
+    return facets(query=q, selected=selected)
 
 
 @app.get("/api/plants/{plant_id}")

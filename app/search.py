@@ -6,7 +6,7 @@ import sqlite3
 from typing import Any
 
 from app.db import CANONICAL_FIELDS, connect, get_meta, init_db
-from app.ingest import THREATENED_STATUSES
+from app.filters import FILTER_GROUPS, option_counts, selected_filters, where_clause
 
 TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
 
@@ -47,45 +47,49 @@ def _row_to_plant(row: sqlite3.Row, include_extra: bool = False) -> dict[str, An
     return plant
 
 
+def _query_parts(
+    query: str,
+    selected: dict[str, list[str]],
+    *,
+    exclude: str | None = None,
+) -> tuple[str, str, list[Any]]:
+    match = build_match_query(query)
+    where, params = where_clause(selected, exclude=exclude)
+    join = ""
+    if match:
+        where = f"{where} AND plants_fts MATCH ?"
+        params = [*params, match]
+        join = "JOIN plants_fts ON plants_fts.rowid = plants.id"
+    return where, join, params
+
+
 def search_plants(
     query: str,
     family: str = "",
     growth_habit: str = "",
     genus: str = "",
     conservation_status: str = "",
+    selected: dict[str, list[str]] | None = None,
     limit: int = 25,
     offset: int = 0,
     db_path: str | None = None,
 ) -> dict[str, Any]:
     limit = max(1, min(limit, 100))
     offset = max(0, offset)
+    chosen = selected_filters(
+        selected,
+        family=family,
+        growth_habit=growth_habit,
+        genus=genus,
+        conservation_status=conservation_status,
+    )
+    where, join, params = _query_parts(query, chosen)
     match = build_match_query(query)
-    filters = ["1=1"]
-    params: list[Any] = []
-    if match:
-        filters.append("plants_fts MATCH ?")
-        params.append(match)
-    if family:
-        filters.append("plants.family = ?")
-        params.append(family)
-    if genus:
-        filters.append("plants.genus = ?")
-        params.append(genus)
-    if growth_habit:
-        filters.append("plants.growth_habit LIKE ?")
-        params.append(f"%{growth_habit}%")
-    if conservation_status:
-        if conservation_status.strip().lower() == "threatened":
-            placeholders = ", ".join("?" for _ in THREATENED_STATUSES)
-            filters.append(f"plants.conservation_status IN ({placeholders})")
-            params.extend(sorted(THREATENED_STATUSES))
-        else:
-            filters.append("plants.conservation_status = ?")
-            params.append(conservation_status)
-
-    where = " AND ".join(filters)
-    order = "bm25(plants_fts), plants.common_name COLLATE NOCASE" if match else "plants.common_name COLLATE NOCASE, plants.scientific_name COLLATE NOCASE"
-    join = "JOIN plants_fts ON plants_fts.rowid = plants.id" if match else ""
+    order = (
+        "bm25(plants_fts), plants.common_name COLLATE NOCASE"
+        if match
+        else "plants.genus COLLATE NOCASE, plants.common_name COLLATE NOCASE, plants.scientific_name COLLATE NOCASE"
+    )
 
     conn = connect(db_path)
     try:
@@ -112,6 +116,7 @@ def search_plants(
                 "limit": limit,
                 "offset": offset,
                 "query": query,
+                "filters": chosen,
                 "results": [],
             }
         return {
@@ -119,6 +124,7 @@ def search_plants(
             "limit": limit,
             "offset": offset,
             "query": query,
+            "filters": chosen,
             "results": [_row_to_plant(row) for row in rows],
         }
     finally:
@@ -135,30 +141,53 @@ def get_plant(plant_id: int, db_path: str | None = None) -> dict[str, Any] | Non
         conn.close()
 
 
-def facets(db_path: str | None = None) -> dict[str, list[dict[str, Any]]]:
+def facets(
+    query: str = "",
+    selected: dict[str, list[str]] | None = None,
+    db_path: str | None = None,
+) -> dict[str, Any]:
+    chosen = selected_filters(selected)
     conn = connect(db_path)
     try:
         init_db(conn)
-
-        def grouped(column: str) -> list[dict[str, Any]]:
-            rows = conn.execute(
-                f"""
-                SELECT {column} AS value, COUNT(*) AS count
-                FROM plants
-                WHERE TRIM({column}) != ''
-                GROUP BY {column}
-                ORDER BY count DESC, value COLLATE NOCASE
-                LIMIT 80
-                """
-            ).fetchall()
-            return [{"value": row["value"], "count": row["count"]} for row in rows]
-
-        return {
-            "family": grouped("family"),
-            "genus": grouped("genus"),
-            "growth_habit": grouped("growth_habit"),
-            "conservation_status": grouped("conservation_status"),
-        }
+        where, join, params = _query_parts(query, chosen)
+        try:
+            total = conn.execute(
+                f"SELECT COUNT(*) AS n FROM plants {join} WHERE {where}",
+                params,
+            ).fetchone()["n"]
+        except sqlite3.OperationalError:
+            total = 0
+        groups = []
+        for group in FILTER_GROUPS:
+            group_where, group_join, group_params = _query_parts(query, chosen, exclude=group["key"])
+            try:
+                options = option_counts(
+                    conn,
+                    group,
+                    group_where,
+                    group_params,
+                    join=group_join,
+                )
+            except sqlite3.OperationalError:
+                options = [
+                    {"value": value, "label": label, "count": 0}
+                    for value, label in group.get("options") or []
+                ]
+            groups.append(
+                {
+                    "key": group["key"],
+                    "label": group["label"],
+                    "dynamic": bool(group.get("dynamic")),
+                    "options": options,
+                }
+            )
+            selected_values = chosen.get(group["key"]) or []
+            present = {item["value"] for item in options}
+            for value in selected_values:
+                if value not in present:
+                    options.insert(0, {"value": value, "label": value, "count": 0})
+        return {"total": total, "filters": chosen, "groups": groups}
     finally:
         conn.close()
 

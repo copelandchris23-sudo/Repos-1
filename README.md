@@ -15,6 +15,8 @@ Conservation status is attached afterwards from the [IUCN Red List](https://www.
 
 Names already in the 2021 catalog are kept; later datasets only add species that are not already present. Arnold habit, IUCN/BGCI conservation status, Minnesota cold-hardiness zones, and Trees and Shrubs Online hardiness, height, and provenance fill empty fields on existing rows. MDA zones are applied before Trees and Shrubs Online so this dedicated hardiness list wins when a plant has no zone yet.
 
+The sidebar uses identification-style **checkboxes**, following the [Oregon State Landscape Plants search](https://landscapeplants.oregonstate.edu/node/2163). Each checked characteristic keeps plants that have it and drops the rest. Several values in the same group are combined; using another group narrows the list further. Counts update as you filter.
+
 ## Run it
 
 ```bash
