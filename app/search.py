@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 from typing import Any
@@ -25,11 +26,22 @@ def build_match_query(raw: str) -> str | None:
     return " AND ".join(parts)
 
 
+def _blurb(extra_text: str) -> str:
+    for part in extra_text.split(" | "):
+        if part.lower().startswith("uses:"):
+            return part.split(":", 1)[1].strip()[:220]
+    return extra_text[:220]
+
+
 def _row_to_plant(row: sqlite3.Row, include_extra: bool = False) -> dict[str, Any]:
     plant = {field: row[field] for field in CANONICAL_FIELDS}
     plant["id"] = row["id"]
+    plant["blurb"] = _blurb(row["extra_text"] or "")
     if include_extra:
-        plant["extra_json"] = row["extra_json"]
+        try:
+            plant["extra"] = json.loads(row["extra_json"] or "{}")
+        except json.JSONDecodeError:
+            plant["extra"] = {}
         plant["extra_text"] = row["extra_text"]
     return plant
 

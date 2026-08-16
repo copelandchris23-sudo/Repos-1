@@ -1,6 +1,6 @@
 # Woody Plants Search
 
-A local search engine for trees, shrubs, and other woody plants. It ships with a starter catalog derived from [USDA PLANTS](https://plants.usda.gov/) trait tables (public-domain U.S. government data), and you can replace that catalog by uploading your own CSV, TSV, or JSON file.
+A local search engine for the 2021 woody plant catalog. Search by common name, scientific name, family, hardiness, wildlife notes, and other traits. You can replace the index by uploading another CSV, TSV, or JSON file.
 
 ## Run it
 
@@ -13,7 +13,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
-## Upload a dataset
+## Catalog
+
+The default index is `data/Woody_Plant_Search_2021.csv`. Column names from that spreadsheet (`Botanic`, `comm_ful`, habit codes such as `T`/`S`, and the rest) are mapped automatically. Extra columns stay attached to each plant and remain full-text searchable.
+
+## Upload another dataset
 
 Use **Choose file** on the page, or:
 
@@ -21,23 +25,8 @@ Use **Choose file** on the page, or:
 curl -F "file=@your-plants.csv" http://127.0.0.1:8000/api/upload
 ```
 
-These column names are mapped automatically when present:
-
-- scientific name / latin name / binomial
-- common name
-- family, genus
-- growth habit / plant type
-- native status, duration, height, flower color, bloom period
-- drought tolerance, shade tolerance, leaf retention, USDA symbol
-
-Any other columns are kept as extra attributes and remain full-text searchable.
-
 ## Tests
 
 ```bash
 pytest
 ```
-
-## Starter catalog
-
-`data/woody_plants.csv` is built by `scripts/build_seed.py` from USDA PLANTS symbol and synonym tables. It keeps taxa whose growth habit includes tree, shrub, or subshrub.

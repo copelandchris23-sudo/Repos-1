@@ -1,4 +1,10 @@
-const state = {
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
   q: "",
   family: "",
   growthHabit: "",
@@ -60,15 +66,19 @@ function renderResults(data) {
   }
   els.results.innerHTML = data.results
     .map((plant) => {
-      const title = plant.common_name || plant.scientific_name;
-      const latin = plant.scientific_name ? `<em>${plant.scientific_name}</em>` : "";
+      const title = esc(plant.common_name || plant.scientific_name);
+      const latin = plant.scientific_name
+        ? `<em>${esc(plant.scientific_name)}</em>`
+        : "";
       const tags = tagList(plant)
-        .map((tag) => `<span class="tag">${tag}</span>`)
+        .map((tag) => `<span class="tag">${esc(tag)}</span>`)
         .join("");
-      return `<li>
+      const blurb = plant.blurb ? `<p class="blurb">${esc(plant.blurb)}</p>` : "";
+          return `<li>
         <article class="result" data-id="${plant.id}">
           <h3>${title}</h3>
           <div>${latin}</div>
+          ${blurb}
           <div class="tags">${tags}</div>
         </article>
       </li>`;
@@ -89,7 +99,7 @@ async function runSearch() {
 
 async function loadFacets() {
   const data = await api("/api/facets");
-  const habits = ["Tree", "Shrub", "Subshrub"];
+  const habits = ["Tree", "Shrub", "Vine"];
   els.habits.innerHTML = ["All", ...habits]
     .map((habit) => {
       const value = habit === "All" ? "" : habit;
@@ -117,6 +127,9 @@ async function loadStats() {
 
 async function openPlant(id) {
   const plant = await api(`/api/plants/${id}`);
+  const extraFields = Object.entries(plant.extra || {})
+    .filter(([, value]) => value)
+    .map(([label, value]) => [label, value]);
   const fields = [
     ["Scientific name", plant.scientific_name],
     ["Common name", plant.common_name],
@@ -125,22 +138,23 @@ async function openPlant(id) {
     ["Genus", plant.genus],
     ["Growth habit", plant.growth_habit],
     ["Duration", plant.duration],
-    ["Native status", plant.native_status],
+    ["Native range", plant.native_status],
     ["Mature height (ft)", plant.height_mature_ft],
-    ["Leaf retention", plant.leaf_retention],
+    ["Leaf persistence", plant.leaf_retention],
     ["Flower color", plant.flower_color],
     ["Bloom period", plant.bloom_period],
     ["Drought tolerance", plant.drought_tolerance],
     ["Shade tolerance", plant.shade_tolerance],
     ["Lifespan", plant.lifespan],
     ["USDA symbol", plant.usda_symbol],
+    ...extraFields,
   ].filter(([, value]) => value);
   els.detailBody.innerHTML = `
-    <h2>${plant.common_name || plant.scientific_name}</h2>
-    <p><em>${plant.scientific_name || ""}</em></p>
+    <h2>${esc(plant.common_name || plant.scientific_name)}</h2>
+    <p><em>${esc(plant.scientific_name || "")}</em></p>
     <div class="detail-grid">
       ${fields
-        .map(([label, value]) => `<div>${label}</div><div>${value}</div>`)
+        .map(([label, value]) => `<div>${esc(label)}</div><div>${esc(value)}</div>`)
         .join("")}
     </div>
   `;
@@ -232,7 +246,7 @@ els.file.addEventListener("change", async () => {
 });
 
 els.reload.addEventListener("click", async () => {
-  els.uploadStatus.textContent = "Restoring starter catalog…";
+  els.uploadStatus.textContent = "Restoring 2021 catalog…";
   const result = await api("/api/reload-seed", { method: "POST" });
   els.uploadStatus.textContent = `Restored ${result.count.toLocaleString()} plants.`;
   state.offset = 0;

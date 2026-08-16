@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
-SEED_CSV = DATA_DIR / "woody_plants.csv"
+SEED_CSV = DATA_DIR / "Woody_Plant_Search_2021.csv"
 DB_PATH = Path(os.environ.get("PLANTS_DB_PATH", DATA_DIR / "plants.db"))
 
 CANONICAL_FIELDS = [

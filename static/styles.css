@@ -211,9 +211,10 @@ select {
   font-size: 1.28rem;
 }
 
-.result em {
-  color: var(--leaf);
-  font-style: italic;
+.blurb {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 0.35rem 0 0;
 }
 
 .tags {
