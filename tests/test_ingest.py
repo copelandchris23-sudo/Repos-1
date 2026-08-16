@@ -27,6 +27,12 @@ def test_map_headers_understands_conservation_status():
     assert mapping["IUCN Red List"] == "extra:IUCN Red List"
 
 
+def test_map_headers_understands_hardiness_zone():
+    mapping = map_headers(["Botanic", "USDA Hardiness Zone", "RHS Hardiness Rating"])
+    assert mapping["USDA Hardiness Zone"] == "usda_hardiness_zone"
+    assert mapping["RHS Hardiness Rating"] == "extra:RHS Hardiness Rating"
+
+
 def test_map_headers_understands_2021_catalog_names():
     mapping = map_headers(["Botanic", "comm_ful", "Habit (tree, shrub, vine)", "Max Height (ft)"])
     assert mapping["Botanic"] == "scientific_name"

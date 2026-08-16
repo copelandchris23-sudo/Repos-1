@@ -56,9 +56,13 @@ async function api(path, options) {
 }
 
 function tagList(plant) {
-  return [plant.growth_habit, plant.conservation_status, plant.family, plant.duration].filter(
-    Boolean
-  );
+  return [
+    plant.growth_habit,
+    plant.conservation_status,
+    plant.usda_hardiness_zone ? `Zone ${plant.usda_hardiness_zone}` : "",
+    plant.family,
+    plant.duration,
+  ].filter(Boolean);
 }
 
 function renderResults(data) {
@@ -158,6 +162,7 @@ async function openPlant(id) {
     ["Conservation status", plant.conservation_status],
     ["Duration", plant.duration],
     ["Native range", plant.native_status],
+    ["USDA hardiness zone", plant.usda_hardiness_zone],
     ["Mature height (ft)", plant.height_mature_ft],
     ["Leaf persistence", plant.leaf_retention],
     ["Flower color", plant.flower_color],

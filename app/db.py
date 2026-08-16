@@ -28,6 +28,7 @@ CANONICAL_FIELDS = [
     "lifespan",
     "usda_symbol",
     "conservation_status",
+    "usda_hardiness_zone",
 ]
 
 SCHEMA_SQL = """
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS plants (
     lifespan TEXT NOT NULL DEFAULT '',
     usda_symbol TEXT NOT NULL DEFAULT '',
     conservation_status TEXT NOT NULL DEFAULT '',
+    usda_hardiness_zone TEXT NOT NULL DEFAULT '',
     extra_json TEXT NOT NULL DEFAULT '{}',
     extra_text TEXT NOT NULL DEFAULT '',
     search_blob TEXT NOT NULL DEFAULT ''

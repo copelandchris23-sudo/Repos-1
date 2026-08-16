@@ -56,6 +56,27 @@ def test_conservation_status_filter(tmp_path):
     assert names(concern) == {"red-osier dogwood"}
 
 
+def test_habit_filter(tmp_path):
+    db_path = load(tmp_path / "plants.db")
+    found = search_plants("", growth_habit="Shrub", db_path=db_path)
+    assert names(found) == {"red-osier dogwood"}
+
+
+def test_hardiness_zone_is_searchable(tmp_path):
+    db_path = tmp_path / "zone.db"
+    extra = tmp_path / "tso_like.csv"
+    extra.write_text(
+        "scientific_name,common_name,usda_hardiness_zone,rhs_hardiness_rating\n"
+        "Eucryphia hillieri,Hillier's eucryphia,8b-11,H5\n",
+        encoding="utf-8",
+    )
+    ingest_file(extra, db_path=db_path)
+    found = search_plants("zone 8b-11", db_path=db_path)
+    assert names(found) == {"Hillier's eucryphia"}
+    plant = get_plant(found["results"][0]["id"], db_path=db_path)
+    assert plant["usda_hardiness_zone"] == "8b-11"
+
+
 def test_skip_existing_binomials_when_merging(tmp_path):
     db_path = tmp_path / "merge.db"
     ingest_file(FIXTURE, db_path=db_path, replace=True)

@@ -101,6 +101,12 @@ COLUMN_ALIASES = {
         "threatsearch",
         "threat search",
     },
+    "usda_hardiness_zone": {
+        "usda_hardiness_zone",
+        "usda hardiness zone",
+        "hardiness zone",
+        "usda zone",
+    },
 }
 
 _ALIAS_LOOKUP = {
@@ -283,6 +289,7 @@ def normalize_conservation(value: str) -> str:
         return ""
     cleaned = re.sub(r"\s+", " ", value.strip())
     cleaned = re.sub(r"^lower risk[/: ]+", "", cleaned, flags=re.I)
+    cleaned = re.sub(r"\s*\([A-Za-z]{1,5}\)\s*$", "", cleaned)
     return CONSERVATION_LABELS.get(cleaned.lower(), cleaned)
 
 
@@ -322,10 +329,20 @@ def derived_search_terms(record: dict[str, str], extra: dict[str, Any]) -> list[
     elif "partial" in light or "part shade" in light:
         terms.append("part shade")
 
-    zone = str(extra.get("USDA Hardiness Zone") or extra.get("usda hardiness zone") or "").strip()
+    zone = (
+        record.get("usda_hardiness_zone")
+        or extra.get("USDA Hardiness Zone")
+        or extra.get("usda hardiness zone")
+        or ""
+    ).strip()
     if zone:
         terms.append(f"zone {zone}")
         terms.append(f"hardiness zone {zone}")
+        terms.append(f"usda zone {zone}")
+    rhs = str(extra.get("rhs_hardiness_rating") or extra.get("RHS Hardiness Rating") or "").strip()
+    if rhs:
+        terms.append(rhs)
+        terms.append(f"rhs {rhs}")
 
     if str(extra.get("Ornamental Winners") or "").strip() in {"*", "yes", "Y"}:
         terms.append("ornamental")
