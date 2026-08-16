@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.mda import MDA_URL, aggregate_mda_rows, parse_mda_html
 from app.tso import TSO_SITEMAP, parse_tso_article, tso_species_urls
 OUT_DIR = ROOT / "data" / "external"
 CACHE = Path("/tmp/open-plants")
@@ -626,10 +627,10 @@ def build_iucn() -> None:
     )
 
 
-def fetch_text(url: str, dest: Path | None = None) -> str:
+def fetch_text(url: str, dest: Path | None = None, require_h1: bool = True) -> str:
     if dest and dest.exists() and dest.stat().st_size > 500:
         text = dest.read_text(encoding="utf-8", errors="replace")
-        if "<h1" in text.lower():
+        if not require_h1 or "<h1" in text.lower():
             return text
         dest.unlink()
     req = urllib.request.Request(
@@ -644,16 +645,37 @@ def fetch_text(url: str, dest: Path | None = None) -> str:
     )
     with urllib.request.urlopen(req, timeout=20) as response:
         text = response.read().decode("utf-8", "replace")
-    if "<h1" not in text.lower():
-        raise RuntimeError(f"Incomplete TSO page: {url}")
+    if require_h1 and "<h1" not in text.lower():
+        raise RuntimeError(f"Incomplete HTML page: {url}")
     if dest:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(text, encoding="utf-8")
     return text
 
 
+def build_mda() -> None:
+    html = fetch_text(MDA_URL, CACHE / "mda-hardiness.html")
+    records = aggregate_mda_rows(parse_mda_html(html))
+    write_csv(
+        OUT_DIR / "mda_cold_hardiness.csv",
+        [
+            "scientific_name",
+            "common_name",
+            "growth_habit",
+            "leaf_retention",
+            "usda_hardiness_zone",
+            "catalog_source",
+            "catalog_source_url",
+            "mda_hardiness_zone",
+            "mda_categories",
+            "mda_cultivar_notes",
+        ],
+        records,
+    )
+
+
 def build_tso() -> None:
-    sitemap = fetch_text(TSO_SITEMAP, CACHE / "tso-sitemap.xml")
+    sitemap = fetch_text(TSO_SITEMAP, CACHE / "tso-sitemap.xml", require_h1=False)
     urls = tso_species_urls(sitemap)
     cache_dir = CACHE / "tso-html"
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -730,6 +752,7 @@ def main() -> None:
     build_openplantdb()
     build_arnold()
     build_iucn()
+    build_mda()
     build_tso()
 
 

@@ -4,6 +4,7 @@ A local search engine for woody plants. The default index combines:
 
 - The 2021 woody plant spreadsheet in this repo
 - [Arnold Arboretum](https://arboretum.harvard.edu/) living-collection taxa and growth habit (public Arboretum Explorer layer)
+- [Minnesota Department of Agriculture Cold Hardiness List](https://www.mda.state.mn.us/cold-hardiness-list) — USDA minimum hardiness zones for woody plants sold in Minnesota
 - [Trees and Shrubs Online](https://www.treesandshrubsonline.org/) (International Dendrology Society) — USDA/RHS hardiness, cultivated dimensions, native range/provenance, and taxonomic notes
 - [USDA PLANTS](https://plants.usda.gov/) woody taxa (public-domain U.S. government data)
 - [GlobalUsefulNativeTrees (GlobUNT)](https://doi.org/10.1038/s41598-023-39552-1) (CC BY)
@@ -12,7 +13,7 @@ A local search engine for woody plants. The default index combines:
 
 Conservation status is attached afterwards from the [IUCN Red List](https://www.iucnredlist.org/) Darwin Core archive hosted by [GBIF](https://doi.org/10.15468/0qnb58) (CC BY). Tree habit for that overlay uses [BGCI GlobalTreeSearch](https://tools.bgci.org/global_tree_search.php) as a checklist only; the GlobalTreeSearch download itself is CC BY-NC-ND and is not redistributed. BGCI leads the Global Tree Assessment that feeds IUCN tree assessments.
 
-Names already in the 2021 catalog are kept; later datasets only add species that are not already present. Arnold habit, IUCN/BGCI conservation status, and Trees and Shrubs Online hardiness, height, and provenance fill empty fields on existing rows.
+Names already in the 2021 catalog are kept; later datasets only add species that are not already present. Arnold habit, IUCN/BGCI conservation status, Minnesota cold-hardiness zones, and Trees and Shrubs Online hardiness, height, and provenance fill empty fields on existing rows. MDA zones are applied before Trees and Shrubs Online so this dedicated hardiness list wins when a plant has no zone yet.
 
 ## Run it
 

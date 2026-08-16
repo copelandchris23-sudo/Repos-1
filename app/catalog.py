@@ -31,6 +31,12 @@ TSO_ENRICH_FIELDS = [
     "genus",
     "synonyms",
 ]
+MDA_ENRICH_FIELDS = [
+    "usda_hardiness_zone",
+    "growth_habit",
+    "common_name",
+    "leaf_retention",
+]
 
 
 def catalog_files() -> list[Path]:
@@ -77,6 +83,7 @@ def load_default_catalog(db_path: Path | str | None = None) -> dict:
     enriched = [
         _enrich_from(EXTERNAL_DIR / "arnold_arboretum_inventory.csv", ARNOLD_ENRICH_FIELDS, db_path),
         _enrich_from(EXTERNAL_DIR / "iucn_conservation_status.csv", IUCN_ENRICH_FIELDS, db_path),
+        _enrich_from(EXTERNAL_DIR / "mda_cold_hardiness.csv", MDA_ENRICH_FIELDS, db_path),
         _enrich_from(EXTERNAL_DIR / "trees_and_shrubs_online.csv", TSO_ENRICH_FIELDS, db_path),
     ]
     conn = connect(db_path)

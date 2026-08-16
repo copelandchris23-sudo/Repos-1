@@ -101,11 +101,14 @@ COLUMN_ALIASES = {
         "threatsearch",
         "threat search",
     },
-    "usda_hardiness_zone": {
+        "usda_hardiness_zone": {
         "usda_hardiness_zone",
         "usda hardiness zone",
         "hardiness zone",
         "usda zone",
+        "minimum hardiness zone",
+        "min hardiness zone",
+        "min zone",
     },
 }
 
