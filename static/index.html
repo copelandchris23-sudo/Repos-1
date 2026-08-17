@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=Source+Sans+3:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=2" />
   </head>
   <body>
     <div class="page">
@@ -40,17 +40,11 @@
       <div class="layout">
         <aside class="filters" id="filter-panel">
           <div class="filter-toolbar">
-            <h2>Plant characteristics</h2>
+            <h2>Filter by characteristic</h2>
             <button type="button" class="text-button" id="clear-filters">
               Clear all filters
             </button>
           </div>
-          <p class="filter-help">
-            Same idea as the
-            <a href="https://landscapeplants.oregonstate.edu/node/2163">Oregon State woody plant search</a>:
-            checkboxes are filters, not just labels. Values in one group are combined;
-            every group you use narrows the list further.
-          </p>
           <div id="filter-groups"></div>
           <section class="upload-card">
             <h2>Upload a dataset</h2>
@@ -88,6 +82,6 @@
       </article>
     </dialog>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=2"></script>
   </body>
 </html>

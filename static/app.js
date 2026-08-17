@@ -6,13 +6,121 @@ function esc(value) {
     .replaceAll('"', "&quot;");
 }
 
-const state = {
-  q: "",
-  filters: {},
-  familyQuery: "",
-  offset: 0,
-  limit: 20,
-};
+const FILTER_GROUPS = [
+  {
+    key: "foliage_type",
+    label: "Leaf type",
+    options: [
+      ["broadleaf", "Woody broadleaf"],
+      ["conifer", "Woody conifer"],
+    ],
+  },
+  {
+    key: "growth_habit",
+    label: "Growth habit",
+    options: [
+      ["Tree", "Tree"],
+      ["Shrub", "Shrub"],
+      ["Vine", "Vine"],
+      ["Groundcover", "Groundcover"],
+    ],
+  },
+  {
+    key: "leaf_retention",
+    label: "Leaf persistence",
+    options: [
+      ["Evergreen", "Evergreen"],
+      ["Deciduous", "Deciduous"],
+    ],
+  },
+  {
+    key: "hardiness_zone",
+    label: "USDA hardiness zone",
+    options: Array.from({ length: 11 }, (_, index) => {
+      const zone = String(index + 1);
+      return [zone, `Zone ${zone}`];
+    }),
+  },
+  {
+    key: "height",
+    label: "Mature height",
+    options: [
+      ["under-15", "Under 15 ft"],
+      ["15-40", "15–40 ft"],
+      ["40-80", "40–80 ft"],
+      ["80-plus", "80 ft or taller"],
+    ],
+  },
+  {
+    key: "flower_color",
+    label: "Flower color",
+    options: [
+      ["white", "White/gray"],
+      ["yellow", "Yellow"],
+      ["pink", "Pink"],
+      ["red", "Red"],
+      ["orange", "Orange"],
+      ["purple", "Purple/violet"],
+      ["blue", "Blue"],
+      ["green", "Green"],
+      ["brown", "Brown"],
+    ],
+  },
+  {
+    key: "bloom_period",
+    label: "Bloom season",
+    options: [
+      ["spring", "Spring"],
+      ["summer", "Summer"],
+      ["fall", "Fall"],
+      ["winter", "Winter"],
+    ],
+  },
+  {
+    key: "light",
+    label: "Light",
+    options: [
+      ["sun", "Full sun"],
+      ["part-shade", "Part shade"],
+      ["shade", "Shade"],
+    ],
+  },
+  {
+    key: "drought_tolerance",
+    label: "Drought tolerance",
+    options: [
+      ["High", "High"],
+      ["Medium", "Medium"],
+      ["Low", "Low"],
+    ],
+  },
+  {
+    key: "conservation_status",
+    label: "Conservation",
+    options: [
+      ["threatened", "Threatened"],
+      ["Near Threatened", "Near Threatened"],
+      ["Least Concern", "Least Concern"],
+      ["Data Deficient", "Data Deficient"],
+    ],
+  },
+  { key: "family", label: "Family", options: [], dynamic: true },
+];
+
+function fallbackFacets() {
+  return {
+    groups: FILTER_GROUPS.map((group) => ({
+      key: group.key,
+      label: group.label,
+      dynamic: Boolean(group.dynamic),
+      options: (group.options || []).map(([value, label]) => ({
+        value,
+        label,
+        count: 0,
+      })),
+    })),
+  };
+}
 
 const els = {
   form: document.getElementById("search-form"),
@@ -147,12 +255,16 @@ function renderResults(data) {
 
 function optionMarkup(group, option) {
   const checked = isSelected(group.key, option.value);
-  const disabled = option.count === 0 && !checked ? "disabled" : "";
+  const disabled = state.countsReady && option.count === 0 && !checked ? "disabled" : "";
   const compact = group.key === "hardiness_zone" ? " compact" : "";
+  const count =
+    state.countsReady && option.count != null
+      ? `<span class="check-count">${Number(option.count).toLocaleString()}</span>`
+      : `<span class="check-count"></span>`;
   return `<label class="check${compact}${checked ? " is-on" : ""}">
     <input type="checkbox" data-filter="${esc(group.key)}" value="${esc(option.value)}" ${checked ? "checked" : ""} ${disabled} />
     <span class="check-label">${esc(option.label)}</span>
-    <span class="check-count">${option.count.toLocaleString()}</span>
+    ${count}
   </label>`;
 }
 
@@ -198,12 +310,17 @@ async function runSearch() {
 
 async function loadFacets() {
   const data = await api(`/api/facets?${queryParams({ includePaging: false })}`);
+  state.countsReady = true;
   renderFilters(data);
   return data;
 }
 
 async function refresh() {
-  await Promise.all([loadFacets(), runSearch()]);
+  try {
+    await Promise.all([loadFacets(), runSearch()]);
+  } catch (error) {
+    els.resultCount.textContent = error.message || "Could not update the plant list.";
+  }
 }
 
 async function loadStats() {
@@ -371,5 +488,7 @@ els.reload.addEventListener("click", async () => {
 
 els.closeDetail.addEventListener("click", () => els.detail.close());
 
+state.countsReady = false;
+renderFilters(fallbackFacets());
 loadStats();
 refresh();
