@@ -122,6 +122,16 @@ function fallbackFacets() {
   };
 }
 
+const state = {
+  q: "",
+  filters: {},
+  familyQuery: "",
+  offset: 0,
+  limit: 20,
+  countsReady: false,
+  facetGroups: [],
+};
+
 const els = {
   form: document.getElementById("search-form"),
   q: document.getElementById("q"),
@@ -488,7 +498,6 @@ els.reload.addEventListener("click", async () => {
 
 els.closeDetail.addEventListener("click", () => els.detail.close());
 
-state.countsReady = false;
 renderFilters(fallbackFacets());
 loadStats();
 refresh();
