@@ -56,6 +56,22 @@ def test_conservation_status_filter(tmp_path):
     assert names(concern) == {"red-osier dogwood"}
 
 
+def test_search_offset_walks_through_results(tmp_path):
+    db_path = load(tmp_path / "plants.db")
+    first = search_plants("", limit=1, offset=0, db_path=db_path)
+    second = search_plants("", limit=1, offset=1, db_path=db_path)
+    assert first["total"] == second["total"] >= 2
+    assert first["limit"] == 1
+    assert second["offset"] == 1
+    assert first["results"][0]["id"] != second["results"][0]["id"]
+
+
+def test_search_limit_is_capped(tmp_path):
+    db_path = load(tmp_path / "plants.db")
+    found = search_plants("", limit=500, db_path=db_path)
+    assert found["limit"] == 200
+
+
 def test_habit_filter(tmp_path):
     db_path = load(tmp_path / "plants.db")
     found = search_plants("", growth_habit="Shrub", db_path=db_path)

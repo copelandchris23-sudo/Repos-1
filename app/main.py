@@ -67,7 +67,7 @@ def api_search(
     coarse_roots: list[str] = Query(default=[]),
     production_method: list[str] = Query(default=[]),
     planting_season: list[str] = Query(default=[]),
-    limit: int = Query(default=25, ge=1, le=100),
+    limit: int = Query(default=40, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> dict:
     ensure_seeded()

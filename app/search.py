@@ -74,7 +74,7 @@ def search_plants(
     offset: int = 0,
     db_path: str | None = None,
 ) -> dict[str, Any]:
-    limit = max(1, min(limit, 100))
+    limit = max(1, min(limit, 200))
     offset = max(0, offset)
     chosen = selected_filters(
         selected,

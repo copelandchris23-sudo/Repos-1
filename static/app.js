@@ -153,10 +153,16 @@ const state = {
   filters: {},
   familyQuery: "",
   offset: 0,
-  limit: 20,
+  limit: 40,
+  shown: 0,
+  total: 0,
+  hasMore: false,
+  loadingMore: false,
   countsReady: false,
   facetGroups: [],
 };
+
+let searchSeq = 0;
 
 const els = {
   form: document.getElementById("search-form"),
@@ -166,7 +172,8 @@ const els = {
   results: document.getElementById("results"),
   resultCount: document.getElementById("result-count"),
   activeFilters: document.getElementById("active-filters"),
-  pager: document.getElementById("pager"),
+  scrollStatus: document.getElementById("scroll-status"),
+  sentinel: document.getElementById("scroll-sentinel"),
   groups: document.getElementById("filter-groups"),
   clear: document.getElementById("clear-filters"),
   file: document.getElementById("file"),
@@ -240,39 +247,14 @@ function renderActiveFilters(groups) {
   els.activeFilters.innerHTML = chips.join("");
 }
 
-function renderResults(data) {
-  els.resultCount.textContent =
-    data.total === 0
-      ? "No matching plants"
-      : `${data.total.toLocaleString()} plants match these characteristics`;
-  renderActiveFilters(state.facetGroups);
-  if (!data.results.length) {
-    els.results.innerHTML = `<li class="empty">Nothing matched. Clear a filter or try a broader trait, such as growth habit or leaf persistence.</li>`;
-    els.pager.innerHTML = "";
-    return;
-  }
-
-  const grouped = [];
-  for (const plant of data.results) {
-    const genus = plant.genus || plant.scientific_name.split(" ")[0] || "Unknown";
-    const last = grouped[grouped.length - 1];
-    if (!last || last.genus !== genus) grouped.push({ genus, plants: [plant] });
-    else last.plants.push(plant);
-  }
-
-  els.results.innerHTML = grouped
-    .map((group) => {
-      const items = group.plants
-        .map((plant) => {
-          const title = esc(plant.common_name || plant.scientific_name);
-          const latin = plant.scientific_name
-            ? `<em>${esc(plant.scientific_name)}</em>`
-            : "";
-          const tags = tagList(plant)
-            .map((tag) => `<span class="tag">${esc(tag)}</span>`)
-            .join("");
-          const blurb = plant.blurb ? `<p class="blurb">${esc(plant.blurb)}</p>` : "";
-          return `<li>
+function plantCard(plant) {
+  const title = esc(plant.common_name || plant.scientific_name);
+  const latin = plant.scientific_name ? `<em>${esc(plant.scientific_name)}</em>` : "";
+  const tags = tagList(plant)
+    .map((tag) => `<span class="tag">${esc(tag)}</span>`)
+    .join("");
+  const blurb = plant.blurb ? `<p class="blurb">${esc(plant.blurb)}</p>` : "";
+  return `<li>
         <article class="result" data-id="${plant.id}">
           <h3>${title}</h3>
           <div>${latin}</div>
@@ -280,17 +262,70 @@ function renderResults(data) {
           <div class="tags">${tags}</div>
         </article>
       </li>`;
-        })
-        .join("");
-      return `<li class="genus-group"><h3 class="genus-heading">${esc(group.genus)}</h3><ol>${items}</ol></li>`;
-    })
-    .join("");
-  const prevDisabled = state.offset === 0 ? "disabled" : "";
-  const nextDisabled = state.offset + state.limit >= data.total ? "disabled" : "";
-  els.pager.innerHTML = `
-    <button type="button" data-dir="prev" ${prevDisabled}>Previous</button>
-    <button type="button" data-dir="next" ${nextDisabled}>Next</button>
-  `;
+}
+
+function genusName(plant) {
+  return plant.genus || (plant.scientific_name || "").split(" ")[0] || "Unknown";
+}
+
+function appendResultCards(plants) {
+  for (const plant of plants) {
+    const genus = genusName(plant);
+    let group = els.results.lastElementChild;
+    if (
+      !group ||
+      !group.classList.contains("genus-group") ||
+      group.dataset.genus !== genus
+    ) {
+      group = document.createElement("li");
+      group.className = "genus-group";
+      group.dataset.genus = genus;
+      group.innerHTML = `<h3 class="genus-heading">${esc(genus)}</h3><ol></ol>`;
+      els.results.appendChild(group);
+    }
+    group.querySelector("ol").insertAdjacentHTML("beforeend", plantCard(plant));
+  }
+}
+
+function updateResultCount() {
+  if (!state.total) {
+    els.resultCount.textContent = "No matching plants";
+    els.scrollStatus.hidden = true;
+    return;
+  }
+  els.resultCount.textContent =
+    state.shown < state.total
+      ? `Showing ${state.shown.toLocaleString()} of ${state.total.toLocaleString()} plants`
+      : `${state.total.toLocaleString()} plants match these characteristics`;
+  els.scrollStatus.hidden = false;
+  els.scrollStatus.textContent = state.hasMore
+    ? "Scroll for more plants"
+    : "End of results";
+}
+
+function renderResults(data, { append = false } = {}) {
+  renderActiveFilters(state.facetGroups);
+  state.total = data.total;
+  if (!append) {
+    els.results.innerHTML = "";
+    state.shown = 0;
+  }
+  if (!data.results.length && !append) {
+    els.results.innerHTML = `<li class="empty">Nothing matched. Clear a filter or try a broader trait, such as growth habit or leaf persistence.</li>`;
+    state.hasMore = false;
+    updateResultCount();
+    return;
+  }
+  if (append && !data.results.length) {
+    state.hasMore = false;
+    updateResultCount();
+    return;
+  }
+  appendResultCards(data.results);
+  state.shown += data.results.length;
+  state.offset = state.shown;
+  state.hasMore = state.shown < state.total;
+  updateResultCount();
 }
 
 function optionMarkup(group, option) {
@@ -343,9 +378,48 @@ function renderFilters(data) {
   renderActiveFilters(state.facetGroups);
 }
 
-async function runSearch() {
-  const data = await api(`/api/search?${queryParams()}`);
-  renderResults(data);
+function sentinelNeedsMore() {
+  if (!els.sentinel || !state.hasMore || state.loadingMore) return false;
+  const rect = els.sentinel.getBoundingClientRect();
+  return rect.top < window.innerHeight + 800;
+}
+
+function maybeLoadMore() {
+  if (sentinelNeedsMore()) runSearch({ append: true });
+}
+
+async function runSearch({ append = false } = {}) {
+  if (append && (!state.hasMore || state.loadingMore)) return;
+  state.loadingMore = true;
+  if (!append) {
+    state.offset = 0;
+    state.hasMore = false;
+  }
+  const seq = ++searchSeq;
+  if (append) {
+    els.scrollStatus.hidden = false;
+    els.scrollStatus.textContent = "Loading more plants…";
+  }
+  let loaded = false;
+  try {
+    const data = await api(`/api/search?${queryParams()}`);
+    if (seq !== searchSeq) return;
+    renderResults(data, { append });
+    loaded = true;
+  } catch (error) {
+    if (seq !== searchSeq) return;
+    if (append) {
+      els.scrollStatus.hidden = false;
+      els.scrollStatus.textContent = "Could not load more plants. Scroll to try again.";
+    } else {
+      throw error;
+    }
+  } finally {
+    if (seq === searchSeq) {
+      state.loadingMore = false;
+      if (loaded) maybeLoadMore();
+    }
+  }
 }
 
 async function loadFacets() {
@@ -498,13 +572,17 @@ els.results.addEventListener("click", (event) => {
   if (card) openPlant(card.dataset.id);
 });
 
-els.pager.addEventListener("click", (event) => {
-  const button = event.target.closest("button");
-  if (!button || button.disabled) return;
-  state.offset += button.dataset.dir === "next" ? state.limit : -state.limit;
-  state.offset = Math.max(0, state.offset);
-  runSearch();
-});
+if (els.sentinel && "IntersectionObserver" in window) {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) maybeLoadMore();
+    },
+    { rootMargin: "800px 0px" }
+  );
+  observer.observe(els.sentinel);
+} else {
+  window.addEventListener("scroll", maybeLoadMore, { passive: true });
+}
 
 els.file.addEventListener("change", async () => {
   const file = els.file.files[0];

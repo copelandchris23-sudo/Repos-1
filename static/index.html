@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=5" />
+    <link rel="stylesheet" href="/static/styles.css?v=6" />
   </head>
   <body>
     <div class="site">
@@ -78,7 +78,8 @@
               <div class="active-filters" id="active-filters"></div>
             </div>
             <ol class="results" id="results"></ol>
-            <div class="pager" id="pager"></div>
+            <p class="scroll-status" id="scroll-status" hidden></p>
+            <div id="scroll-sentinel" aria-hidden="true"></div>
           </main>
         </div>
       </div>
@@ -95,6 +96,6 @@
       </article>
     </dialog>
 
-    <script src="/static/app.js?v=5"></script>
+    <script src="/static/app.js?v=6"></script>
   </body>
 </html>
