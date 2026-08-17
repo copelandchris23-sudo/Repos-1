@@ -135,6 +135,32 @@ FILTER_GROUPS = (
         ),
     },
     {
+        "key": "thin_barked",
+        "label": "Bark",
+        "options": (("Yes", "Thin-barked"),),
+    },
+    {
+        "key": "coarse_roots",
+        "label": "Roots",
+        "options": (("Yes", "Coarse roots"),),
+    },
+    {
+        "key": "production_method",
+        "label": "Production method",
+        "options": (
+            ("Container", "Container"),
+            ("In-ground", "In-ground"),
+        ),
+    },
+    {
+        "key": "planting_season",
+        "label": "Planting season",
+        "options": (
+            ("Spring", "Spring"),
+            ("Fall", "Fall"),
+        ),
+    },
+    {
         "key": "family",
         "label": "Family",
         "options": (),
@@ -377,6 +403,26 @@ def clause_for(key: str, values: list[str]) -> tuple[str, list[Any]]:
         )
     if key == "conservation_status":
         return _or_clause(["conservation_has(plants.conservation_status, ?) = 1" for _ in values]), values
+    if key == "thin_barked":
+        return _or_clause(["LOWER(TRIM(plants.thin_barked)) = ?" for _ in values]), [value.lower() for value in values]
+    if key == "coarse_roots":
+        return _or_clause(["LOWER(TRIM(plants.coarse_roots)) = ?" for _ in values]), [value.lower() for value in values]
+    if key == "production_method":
+        likes = []
+        params: list[Any] = []
+        for value in values:
+            if value.lower() == "container":
+                likes.append("LOWER(plants.production_method) LIKE ?")
+                params.append("%container%")
+            elif value.lower() in {"in-ground", "in ground"}:
+                likes.append("(LOWER(plants.production_method) LIKE ? OR LOWER(plants.production_method) LIKE ?)")
+                params.extend(["%in-ground%", "%in ground%"])
+            else:
+                likes.append("plants.production_method = ?")
+                params.append(value)
+        return _or_clause(likes), params
+    if key == "planting_season":
+        return _or_clause(["plants.planting_season = ?" for _ in values]), values
     return "1=1", []
 
 

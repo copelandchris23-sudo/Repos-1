@@ -63,6 +63,10 @@ def api_search(
     bloom_period: list[str] = Query(default=[]),
     drought_tolerance: list[str] = Query(default=[]),
     light: list[str] = Query(default=[]),
+    thin_barked: list[str] = Query(default=[]),
+    coarse_roots: list[str] = Query(default=[]),
+    production_method: list[str] = Query(default=[]),
+    planting_season: list[str] = Query(default=[]),
     limit: int = Query(default=25, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> dict:
@@ -81,6 +85,10 @@ def api_search(
             "bloom_period": bloom_period,
             "drought_tolerance": drought_tolerance,
             "light": light,
+            "thin_barked": thin_barked,
+            "coarse_roots": coarse_roots,
+            "production_method": production_method,
+            "planting_season": planting_season,
         }
     )
     return search_plants(
@@ -113,6 +121,10 @@ def api_facets(
     bloom_period: list[str] = Query(default=[]),
     drought_tolerance: list[str] = Query(default=[]),
     light: list[str] = Query(default=[]),
+    thin_barked: list[str] = Query(default=[]),
+    coarse_roots: list[str] = Query(default=[]),
+    production_method: list[str] = Query(default=[]),
+    planting_season: list[str] = Query(default=[]),
 ) -> dict:
     ensure_seeded()
     selected = selected_filters(
@@ -129,6 +141,10 @@ def api_facets(
             "bloom_period": bloom_period,
             "drought_tolerance": drought_tolerance,
             "light": light,
+            "thin_barked": thin_barked,
+            "coarse_roots": coarse_roots,
+            "production_method": production_method,
+            "planting_season": planting_season,
         }
     )
     return facets(query=q, selected=selected)

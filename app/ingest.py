@@ -101,7 +101,7 @@ COLUMN_ALIASES = {
         "threatsearch",
         "threat search",
     },
-        "usda_hardiness_zone": {
+    "usda_hardiness_zone": {
         "usda_hardiness_zone",
         "usda hardiness zone",
         "hardiness zone",
@@ -109,6 +109,27 @@ COLUMN_ALIASES = {
         "minimum hardiness zone",
         "min hardiness zone",
         "min zone",
+    },
+    "thin_barked": {
+        "thin_barked",
+        "thin-barked",
+        "thin barked",
+        "thin bark",
+    },
+    "coarse_roots": {
+        "coarse_roots",
+        "coarse roots",
+        "coarse root",
+    },
+    "production_method": {
+        "production_method",
+        "production method",
+        "production",
+    },
+    "planting_season": {
+        "planting_season",
+        "planting season",
+        "plant season",
     },
 }
 
@@ -187,6 +208,27 @@ DROUGHT_CODES = {
     "no": "None",
 }
 
+FLAG_CODES = {
+    "x": "Yes",
+    "yes": "Yes",
+    "y": "Yes",
+    "true": "Yes",
+    "1": "Yes",
+}
+
+PRODUCTION_CODES = {
+    "in-ground": "In-ground",
+    "in ground": "In-ground",
+    "container": "Container",
+    "mostly container": "Mostly container",
+}
+
+SEASON_CODES = {
+    "spring": "Spring",
+    "fall": "Fall",
+    "autumn": "Fall",
+}
+
 
 def normalize_header(name: str) -> str:
     return re.sub(r"\s+", " ", name.strip().lower())
@@ -199,6 +241,12 @@ def normalize_binomial(name: str) -> str:
     if len(parts) >= 2:
         return f"{parts[0]} {parts[1]}"
     return parts[0] if parts else ""
+
+
+def genus_key(name: str) -> str:
+    cleaned = (name or "").replace("×", " ")
+    token = cleaned.strip().split()[0] if cleaned.strip() else ""
+    return re.sub(r"[^a-z]", "", token.lower())
 
 
 def map_headers(headers: Iterable[str]) -> dict[str, str]:
@@ -357,6 +405,19 @@ def derived_search_terms(record: dict[str, str], extra: dict[str, Any]) -> list[
     edible = str(extra.get("Edible?") or extra.get("Edible") or "").strip().lower()
     if edible in {"y", "yes", "true", "*"}:
         terms.append("edible")
+    if record.get("thin_barked", "").strip().lower() == "yes":
+        terms.extend(["thin barked", "thin-barked"])
+    if record.get("coarse_roots", "").strip().lower() == "yes":
+        terms.append("coarse roots")
+    production = record.get("production_method", "").strip()
+    if production:
+        terms.append(production)
+        terms.append(f"{production} production")
+    season = record.get("planting_season", "").strip()
+    if season:
+        terms.append(season)
+        terms.append(f"{season} planting")
+        terms.append("planting season")
     status = record.get("conservation_status", "").strip()
     if status:
         terms.append(status)
@@ -403,6 +464,10 @@ def record_from_row(row: dict[str, Any], header_map: dict[str, str]) -> dict[str
     record["leaf_retention"] = normalize_coded(record.get("leaf_retention", ""), LEAF_CODES)
     record["drought_tolerance"] = normalize_coded(record.get("drought_tolerance", ""), DROUGHT_CODES)
     record["conservation_status"] = normalize_conservation(record.get("conservation_status", ""))
+    record["thin_barked"] = normalize_coded(record.get("thin_barked", ""), FLAG_CODES)
+    record["coarse_roots"] = normalize_coded(record.get("coarse_roots", ""), FLAG_CODES)
+    record["production_method"] = normalize_coded(record.get("production_method", ""), PRODUCTION_CODES)
+    record["planting_season"] = normalize_coded(record.get("planting_season", ""), SEASON_CODES)
     if not record["genus"] and record["scientific_name"]:
         record["genus"] = record["scientific_name"].split()[0]
     return apply_search_fields(record, extra)
@@ -542,13 +607,16 @@ def ingest_rows(
         conn.close()
 
 
-def lookup_from_csv(path: Path) -> dict[str, dict[str, Any]]:
+def lookup_from_csv(path: Path, by: str = "binomial") -> dict[str, dict[str, Any]]:
     headers, rows = parse_tabular(path.name, path.read_bytes())
     header_map = map_headers(headers)
     lookup: dict[str, dict[str, Any]] = {}
     for row in rows:
         record = record_from_row(row, header_map)
-        key = normalize_binomial(record["scientific_name"])
+        if by == "genus":
+            key = genus_key(record.get("genus") or record.get("scientific_name", ""))
+        else:
+            key = normalize_binomial(record["scientific_name"])
         if not key:
             continue
         current = lookup.get(key, {"_extra": {}})
@@ -576,6 +644,7 @@ def enrich_empty_fields(
     lookup: dict[str, dict[str, Any]],
     fields: Iterable[str],
     db_path: Path | str | None = None,
+    by: str = "binomial",
 ) -> dict[str, Any]:
     wanted = [field for field in fields if field in CANONICAL_FIELDS]
     conn = connect(db_path)
@@ -585,7 +654,10 @@ def enrich_empty_fields(
         columns = [row[1] for row in conn.execute("PRAGMA table_info(plants)")]
         for row in conn.execute("SELECT * FROM plants"):
             plant = {column: row[column] for column in columns}
-            key = normalize_binomial(plant.get("scientific_name", ""))
+            if by == "genus":
+                key = genus_key(plant.get("genus") or plant.get("scientific_name", ""))
+            else:
+                key = normalize_binomial(plant.get("scientific_name", ""))
             source = lookup.get(key)
             if not source:
                 continue

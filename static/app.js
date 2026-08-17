@@ -104,6 +104,32 @@ const FILTER_GROUPS = [
       ["Data Deficient", "Data Deficient"],
     ],
   },
+  {
+    key: "thin_barked",
+    label: "Bark",
+    options: [["Yes", "Thin-barked"]],
+  },
+  {
+    key: "coarse_roots",
+    label: "Roots",
+    options: [["Yes", "Coarse roots"]],
+  },
+  {
+    key: "production_method",
+    label: "Production method",
+    options: [
+      ["Container", "Container"],
+      ["In-ground", "In-ground"],
+    ],
+  },
+  {
+    key: "planting_season",
+    label: "Planting season",
+    options: [
+      ["Spring", "Spring"],
+      ["Fall", "Fall"],
+    ],
+  },
   { key: "family", label: "Family", options: [], dynamic: true },
 ];
 
@@ -188,6 +214,10 @@ function tagList(plant) {
     plant.usda_hardiness_zone ? `Zone ${plant.usda_hardiness_zone}` : "",
     plant.family,
     plant.leaf_retention,
+    plant.thin_barked === "Yes" ? "Thin-barked" : "",
+    plant.coarse_roots === "Yes" ? "Coarse roots" : "",
+    plant.production_method,
+    plant.planting_season ? `${plant.planting_season} planting` : "",
   ].filter(Boolean);
 }
 
@@ -356,6 +386,10 @@ async function openPlant(id) {
     ["USDA hardiness zone", plant.usda_hardiness_zone],
     ["Mature height (ft)", plant.height_mature_ft],
     ["Leaf persistence", plant.leaf_retention],
+    ["Thin-barked", plant.thin_barked],
+    ["Coarse roots", plant.coarse_roots],
+    ["Production method", plant.production_method],
+    ["Planting season", plant.planting_season],
     ["Flower color", plant.flower_color],
     ["Bloom period", plant.bloom_period],
     ["Drought tolerance", plant.drought_tolerance],
