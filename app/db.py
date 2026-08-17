@@ -29,6 +29,10 @@ CANONICAL_FIELDS = [
     "usda_symbol",
     "conservation_status",
     "usda_hardiness_zone",
+    "thin_barked",
+    "coarse_roots",
+    "production_method",
+    "planting_season",
 ]
 
 SCHEMA_SQL = """
@@ -53,6 +57,10 @@ CREATE TABLE IF NOT EXISTS plants (
     usda_symbol TEXT NOT NULL DEFAULT '',
     conservation_status TEXT NOT NULL DEFAULT '',
     usda_hardiness_zone TEXT NOT NULL DEFAULT '',
+    thin_barked TEXT NOT NULL DEFAULT '',
+    coarse_roots TEXT NOT NULL DEFAULT '',
+    production_method TEXT NOT NULL DEFAULT '',
+    planting_season TEXT NOT NULL DEFAULT '',
     extra_json TEXT NOT NULL DEFAULT '{}',
     extra_text TEXT NOT NULL DEFAULT '',
     search_blob TEXT NOT NULL DEFAULT ''

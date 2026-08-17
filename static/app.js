@@ -6,13 +6,163 @@ function esc(value) {
     .replaceAll('"', "&quot;");
 }
 
+const FILTER_GROUPS = [
+  {
+    key: "foliage_type",
+    label: "Leaf type",
+    options: [
+      ["broadleaf", "Woody broadleaf"],
+      ["conifer", "Woody conifer"],
+    ],
+  },
+  {
+    key: "growth_habit",
+    label: "Growth habit",
+    options: [
+      ["Tree", "Tree"],
+      ["Shrub", "Shrub"],
+      ["Vine", "Vine"],
+      ["Groundcover", "Groundcover"],
+    ],
+  },
+  {
+    key: "leaf_retention",
+    label: "Leaf persistence",
+    options: [
+      ["Evergreen", "Evergreen"],
+      ["Deciduous", "Deciduous"],
+    ],
+  },
+  {
+    key: "hardiness_zone",
+    label: "USDA hardiness zone",
+    options: Array.from({ length: 11 }, (_, index) => {
+      const zone = String(index + 1);
+      return [zone, `Zone ${zone}`];
+    }),
+  },
+  {
+    key: "height",
+    label: "Mature height",
+    options: [
+      ["under-15", "Under 15 ft"],
+      ["15-40", "15–40 ft"],
+      ["40-80", "40–80 ft"],
+      ["80-plus", "80 ft or taller"],
+    ],
+  },
+  {
+    key: "flower_color",
+    label: "Flower color",
+    options: [
+      ["white", "White/gray"],
+      ["yellow", "Yellow"],
+      ["pink", "Pink"],
+      ["red", "Red"],
+      ["orange", "Orange"],
+      ["purple", "Purple/violet"],
+      ["blue", "Blue"],
+      ["green", "Green"],
+      ["brown", "Brown"],
+    ],
+  },
+  {
+    key: "bloom_period",
+    label: "Bloom season",
+    options: [
+      ["spring", "Spring"],
+      ["summer", "Summer"],
+      ["fall", "Fall"],
+      ["winter", "Winter"],
+    ],
+  },
+  {
+    key: "light",
+    label: "Light",
+    options: [
+      ["sun", "Full sun"],
+      ["part-shade", "Part shade"],
+      ["shade", "Shade"],
+    ],
+  },
+  {
+    key: "drought_tolerance",
+    label: "Drought tolerance",
+    options: [
+      ["High", "High"],
+      ["Medium", "Medium"],
+      ["Low", "Low"],
+    ],
+  },
+  {
+    key: "conservation_status",
+    label: "Conservation",
+    options: [
+      ["threatened", "Threatened"],
+      ["Near Threatened", "Near Threatened"],
+      ["Least Concern", "Least Concern"],
+      ["Data Deficient", "Data Deficient"],
+    ],
+  },
+  {
+    key: "thin_barked",
+    label: "Bark",
+    options: [["Yes", "Thin-barked"]],
+  },
+  {
+    key: "coarse_roots",
+    label: "Roots",
+    options: [["Yes", "Coarse roots"]],
+  },
+  {
+    key: "production_method",
+    label: "Production method",
+    options: [
+      ["Container", "Container"],
+      ["In-ground", "In-ground"],
+    ],
+  },
+  {
+    key: "planting_season",
+    label: "Planting season",
+    options: [
+      ["Spring", "Spring"],
+      ["Fall", "Fall"],
+    ],
+  },
+  { key: "family", label: "Family", options: [], dynamic: true },
+];
+
+function fallbackFacets() {
+  return {
+    groups: FILTER_GROUPS.map((group) => ({
+      key: group.key,
+      label: group.label,
+      dynamic: Boolean(group.dynamic),
+      options: (group.options || []).map(([value, label]) => ({
+        value,
+        label,
+        count: 0,
+      })),
+    })),
+  };
+}
+
 const state = {
   q: "",
   filters: {},
   familyQuery: "",
   offset: 0,
-  limit: 20,
+  limit: 40,
+  shown: 0,
+  total: 0,
+  hasMore: false,
+  loadingMore: false,
+  countsReady: false,
+  facetGroups: [],
 };
+
+let searchSeq = 0;
 
 const els = {
   form: document.getElementById("search-form"),
@@ -22,7 +172,8 @@ const els = {
   results: document.getElementById("results"),
   resultCount: document.getElementById("result-count"),
   activeFilters: document.getElementById("active-filters"),
-  pager: document.getElementById("pager"),
+  scrollStatus: document.getElementById("scroll-status"),
+  sentinel: document.getElementById("scroll-sentinel"),
   groups: document.getElementById("filter-groups"),
   clear: document.getElementById("clear-filters"),
   file: document.getElementById("file"),
@@ -70,6 +221,10 @@ function tagList(plant) {
     plant.usda_hardiness_zone ? `Zone ${plant.usda_hardiness_zone}` : "",
     plant.family,
     plant.leaf_retention,
+    plant.thin_barked === "Yes" ? "Thin-barked" : "",
+    plant.coarse_roots === "Yes" ? "Coarse roots" : "",
+    plant.production_method,
+    plant.planting_season ? `${plant.planting_season} planting` : "",
   ].filter(Boolean);
 }
 
@@ -92,39 +247,14 @@ function renderActiveFilters(groups) {
   els.activeFilters.innerHTML = chips.join("");
 }
 
-function renderResults(data) {
-  els.resultCount.textContent =
-    data.total === 0
-      ? "No matching plants"
-      : `${data.total.toLocaleString()} plants match these characteristics`;
-  renderActiveFilters(state.facetGroups);
-  if (!data.results.length) {
-    els.results.innerHTML = `<li class="empty">Nothing matched. Clear a filter or try a broader trait, such as growth habit or leaf persistence.</li>`;
-    els.pager.innerHTML = "";
-    return;
-  }
-
-  const grouped = [];
-  for (const plant of data.results) {
-    const genus = plant.genus || plant.scientific_name.split(" ")[0] || "Unknown";
-    const last = grouped[grouped.length - 1];
-    if (!last || last.genus !== genus) grouped.push({ genus, plants: [plant] });
-    else last.plants.push(plant);
-  }
-
-  els.results.innerHTML = grouped
-    .map((group) => {
-      const items = group.plants
-        .map((plant) => {
-          const title = esc(plant.common_name || plant.scientific_name);
-          const latin = plant.scientific_name
-            ? `<em>${esc(plant.scientific_name)}</em>`
-            : "";
-          const tags = tagList(plant)
-            .map((tag) => `<span class="tag">${esc(tag)}</span>`)
-            .join("");
-          const blurb = plant.blurb ? `<p class="blurb">${esc(plant.blurb)}</p>` : "";
-          return `<li>
+function plantCard(plant) {
+  const title = esc(plant.common_name || plant.scientific_name);
+  const latin = plant.scientific_name ? `<em>${esc(plant.scientific_name)}</em>` : "";
+  const tags = tagList(plant)
+    .map((tag) => `<span class="tag">${esc(tag)}</span>`)
+    .join("");
+  const blurb = plant.blurb ? `<p class="blurb">${esc(plant.blurb)}</p>` : "";
+  return `<li>
         <article class="result" data-id="${plant.id}">
           <h3>${title}</h3>
           <div>${latin}</div>
@@ -132,27 +262,84 @@ function renderResults(data) {
           <div class="tags">${tags}</div>
         </article>
       </li>`;
-        })
-        .join("");
-      return `<li class="genus-group"><h3 class="genus-heading">${esc(group.genus)}</h3><ol>${items}</ol></li>`;
-    })
-    .join("");
-  const prevDisabled = state.offset === 0 ? "disabled" : "";
-  const nextDisabled = state.offset + state.limit >= data.total ? "disabled" : "";
-  els.pager.innerHTML = `
-    <button type="button" data-dir="prev" ${prevDisabled}>Previous</button>
-    <button type="button" data-dir="next" ${nextDisabled}>Next</button>
-  `;
+}
+
+function genusName(plant) {
+  return plant.genus || (plant.scientific_name || "").split(" ")[0] || "Unknown";
+}
+
+function appendResultCards(plants) {
+  for (const plant of plants) {
+    const genus = genusName(plant);
+    let group = els.results.lastElementChild;
+    if (
+      !group ||
+      !group.classList.contains("genus-group") ||
+      group.dataset.genus !== genus
+    ) {
+      group = document.createElement("li");
+      group.className = "genus-group";
+      group.dataset.genus = genus;
+      group.innerHTML = `<h3 class="genus-heading">${esc(genus)}</h3><ol></ol>`;
+      els.results.appendChild(group);
+    }
+    group.querySelector("ol").insertAdjacentHTML("beforeend", plantCard(plant));
+  }
+}
+
+function updateResultCount() {
+  if (!state.total) {
+    els.resultCount.textContent = "No matching plants";
+    els.scrollStatus.hidden = true;
+    return;
+  }
+  els.resultCount.textContent =
+    state.shown < state.total
+      ? `Showing ${state.shown.toLocaleString()} of ${state.total.toLocaleString()} plants`
+      : `${state.total.toLocaleString()} plants match these characteristics`;
+  els.scrollStatus.hidden = false;
+  els.scrollStatus.textContent = state.hasMore
+    ? "Scroll for more plants"
+    : "End of results";
+}
+
+function renderResults(data, { append = false } = {}) {
+  renderActiveFilters(state.facetGroups);
+  state.total = data.total;
+  if (!append) {
+    els.results.innerHTML = "";
+    state.shown = 0;
+  }
+  if (!data.results.length && !append) {
+    els.results.innerHTML = `<li class="empty">Nothing matched. Clear a filter or try a broader trait, such as growth habit or leaf persistence.</li>`;
+    state.hasMore = false;
+    updateResultCount();
+    return;
+  }
+  if (append && !data.results.length) {
+    state.hasMore = false;
+    updateResultCount();
+    return;
+  }
+  appendResultCards(data.results);
+  state.shown += data.results.length;
+  state.offset = state.shown;
+  state.hasMore = state.shown < state.total;
+  updateResultCount();
 }
 
 function optionMarkup(group, option) {
   const checked = isSelected(group.key, option.value);
-  const disabled = option.count === 0 && !checked ? "disabled" : "";
+  const disabled = state.countsReady && option.count === 0 && !checked ? "disabled" : "";
   const compact = group.key === "hardiness_zone" ? " compact" : "";
+  const count =
+    state.countsReady && option.count != null
+      ? `<span class="check-count">${Number(option.count).toLocaleString()}</span>`
+      : `<span class="check-count"></span>`;
   return `<label class="check${compact}${checked ? " is-on" : ""}">
     <input type="checkbox" data-filter="${esc(group.key)}" value="${esc(option.value)}" ${checked ? "checked" : ""} ${disabled} />
     <span class="check-label">${esc(option.label)}</span>
-    <span class="check-count">${option.count.toLocaleString()}</span>
+    ${count}
   </label>`;
 }
 
@@ -191,19 +378,63 @@ function renderFilters(data) {
   renderActiveFilters(state.facetGroups);
 }
 
-async function runSearch() {
-  const data = await api(`/api/search?${queryParams()}`);
-  renderResults(data);
+function sentinelNeedsMore() {
+  if (!els.sentinel || !state.hasMore || state.loadingMore) return false;
+  const rect = els.sentinel.getBoundingClientRect();
+  return rect.top < window.innerHeight + 800;
+}
+
+function maybeLoadMore() {
+  if (sentinelNeedsMore()) runSearch({ append: true });
+}
+
+async function runSearch({ append = false } = {}) {
+  if (append && (!state.hasMore || state.loadingMore)) return;
+  state.loadingMore = true;
+  if (!append) {
+    state.offset = 0;
+    state.hasMore = false;
+  }
+  const seq = ++searchSeq;
+  if (append) {
+    els.scrollStatus.hidden = false;
+    els.scrollStatus.textContent = "Loading more plants…";
+  }
+  let loaded = false;
+  try {
+    const data = await api(`/api/search?${queryParams()}`);
+    if (seq !== searchSeq) return;
+    renderResults(data, { append });
+    loaded = true;
+  } catch (error) {
+    if (seq !== searchSeq) return;
+    if (append) {
+      els.scrollStatus.hidden = false;
+      els.scrollStatus.textContent = "Could not load more plants. Scroll to try again.";
+    } else {
+      throw error;
+    }
+  } finally {
+    if (seq === searchSeq) {
+      state.loadingMore = false;
+      if (loaded) maybeLoadMore();
+    }
+  }
 }
 
 async function loadFacets() {
   const data = await api(`/api/facets?${queryParams({ includePaging: false })}`);
+  state.countsReady = true;
   renderFilters(data);
   return data;
 }
 
 async function refresh() {
-  await Promise.all([loadFacets(), runSearch()]);
+  try {
+    await Promise.all([loadFacets(), runSearch()]);
+  } catch (error) {
+    els.resultCount.textContent = error.message || "Could not update the plant list.";
+  }
 }
 
 async function loadStats() {
@@ -229,6 +460,10 @@ async function openPlant(id) {
     ["USDA hardiness zone", plant.usda_hardiness_zone],
     ["Mature height (ft)", plant.height_mature_ft],
     ["Leaf persistence", plant.leaf_retention],
+    ["Thin-barked", plant.thin_barked],
+    ["Coarse roots", plant.coarse_roots],
+    ["Production method", plant.production_method],
+    ["Planting season", plant.planting_season],
     ["Flower color", plant.flower_color],
     ["Bloom period", plant.bloom_period],
     ["Drought tolerance", plant.drought_tolerance],
@@ -337,13 +572,17 @@ els.results.addEventListener("click", (event) => {
   if (card) openPlant(card.dataset.id);
 });
 
-els.pager.addEventListener("click", (event) => {
-  const button = event.target.closest("button");
-  if (!button || button.disabled) return;
-  state.offset += button.dataset.dir === "next" ? state.limit : -state.limit;
-  state.offset = Math.max(0, state.offset);
-  runSearch();
-});
+if (els.sentinel && "IntersectionObserver" in window) {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) maybeLoadMore();
+    },
+    { rootMargin: "800px 0px" }
+  );
+  observer.observe(els.sentinel);
+} else {
+  window.addEventListener("scroll", maybeLoadMore, { passive: true });
+}
 
 els.file.addEventListener("change", async () => {
   const file = els.file.files[0];
@@ -371,5 +610,6 @@ els.reload.addEventListener("click", async () => {
 
 els.closeDetail.addEventListener("click", () => els.detail.close());
 
+renderFilters(fallbackFacets());
 loadStats();
 refresh();

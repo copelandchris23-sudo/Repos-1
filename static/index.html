@@ -7,78 +7,86 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=6" />
   </head>
   <body>
-    <div class="page">
-      <header class="hero">
-        <p class="kicker">Catalog of trees, shrubs, and woody plants</p>
-        <h1>Woody Plants</h1>
-        <p class="lede">
-          Search by name, or identify a plant by checking the traits you can see.
-          Each checkbox keeps plants that have that characteristic and removes the
-          rest. Add traits one at a time until the list is small enough to browse.
-        </p>
-        <form class="search-form" id="search-form" autocomplete="off">
-          <label class="sr-only" for="q">Search plants</label>
-          <input
-            id="q"
-            name="q"
-            type="search"
-            placeholder="Try oak, hemlock, zone 5, endangered…"
-            autofocus
-          />
-          <button type="submit">Search</button>
-          <ul class="suggest" id="suggest" hidden></ul>
-        </form>
-        <p class="meta" id="stats">Loading catalog…</p>
+    <div class="site">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <a class="brand" href="/">Woody Plants</a>
+          <p class="brand-note">Search &amp; identify</p>
+        </div>
       </header>
 
-      <div class="layout">
-        <aside class="filters" id="filter-panel">
-          <div class="filter-toolbar">
-            <h2>Plant characteristics</h2>
-            <button type="button" class="text-button" id="clear-filters">
-              Clear all filters
-            </button>
-          </div>
-          <p class="filter-help">
-            Same idea as the
-            <a href="https://landscapeplants.oregonstate.edu/node/2163">Oregon State woody plant search</a>:
-            checkboxes are filters, not just labels. Values in one group are combined;
-            every group you use narrows the list further.
+      <section class="hero">
+        <div class="hero-inner">
+          <p class="kicker">Trees, shrubs, and woody plants</p>
+          <h1>Find the plant.<br />Filter the traits.</h1>
+          <p class="lede">
+            Search by name, or check the characteristics you can see. Each filter
+            keeps matching plants and removes the rest.
           </p>
-          <div id="filter-groups"></div>
-          <section class="upload-card">
-            <h2>Upload a dataset</h2>
-            <p>
-              CSV, TSV, or JSON. Columns such as scientific name, common name,
-              family, and growth habit are mapped automatically. Extra columns stay
-              searchable.
-            </p>
-            <label class="upload-button">
-              Choose file
-              <input id="file" type="file" accept=".csv,.tsv,.txt,.json" />
-            </label>
-            <p class="upload-status" id="upload-status"></p>
-            <button type="button" class="text-button" id="reload-seed">
-            Restore combined catalog
-            </button>
-          </section>
-        </aside>
+          <form class="search-form" id="search-form" autocomplete="off">
+            <label class="sr-only" for="q">Search plants</label>
+            <input
+              id="q"
+              name="q"
+              type="search"
+              placeholder="Search oak, hemlock, zone 5, endangered…"
+              autofocus
+            />
+            <button type="submit">Search</button>
+            <ul class="suggest" id="suggest" hidden></ul>
+          </form>
+          <p class="meta" id="stats">Loading catalog…</p>
+        </div>
+      </section>
 
-        <main>
-          <div class="results-head">
-            <p id="result-count"></p>
-            <div class="active-filters" id="active-filters"></div>
-          </div>
-          <ol class="results" id="results"></ol>
-          <div class="pager" id="pager"></div>
-        </main>
+      <div class="page">
+        <div class="layout">
+          <aside class="filters" id="filter-panel">
+            <div class="filter-toolbar">
+              <h2>Filter by characteristic</h2>
+              <button type="button" class="text-button" id="clear-filters">
+                Clear all
+              </button>
+            </div>
+            <div id="filter-groups"></div>
+            <section class="upload-card">
+              <h2>Upload a dataset</h2>
+              <p>
+                CSV, TSV, or JSON. Columns such as scientific name, common name,
+                family, and growth habit are mapped automatically.
+              </p>
+              <label class="upload-button">
+                Choose file
+                <input id="file" type="file" accept=".csv,.tsv,.txt,.json" />
+              </label>
+              <p class="upload-status" id="upload-status"></p>
+              <button type="button" class="text-button" id="reload-seed">
+                Restore combined catalog
+              </button>
+            </section>
+          </aside>
+
+          <main>
+            <div class="results-head">
+              <p id="result-count"></p>
+              <div class="active-filters" id="active-filters"></div>
+            </div>
+            <ol class="results" id="results"></ol>
+            <p class="scroll-status" id="scroll-status" hidden></p>
+            <div id="scroll-sentinel" aria-hidden="true"></div>
+          </main>
+        </div>
       </div>
+
+      <footer class="site-footer">
+        <p>Local woody plant catalog · Identification filters · Combined open datasets</p>
+      </footer>
     </div>
 
     <dialog id="detail">
@@ -88,6 +96,6 @@
       </article>
     </dialog>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=6"></script>
   </body>
 </html>

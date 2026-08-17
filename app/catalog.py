@@ -6,7 +6,7 @@ from app.db import DATA_DIR, SEED_CSV, connect, get_meta, init_db, set_meta
 from app.ingest import enrich_empty_fields, ingest_file, lookup_from_csv
 
 EXTERNAL_DIR = DATA_DIR / "external"
-OVERLAY_ONLY = {"iucn_conservation_status.csv"}
+OVERLAY_ONLY = {"iucn_conservation_status.csv", "dgh_production_method.csv"}
 
 ARNOLD_ENRICH_FIELDS = [
     "growth_habit",
@@ -37,6 +37,12 @@ MDA_ENRICH_FIELDS = [
     "common_name",
     "leaf_retention",
 ]
+DGH_ENRICH_FIELDS = [
+    "thin_barked",
+    "coarse_roots",
+    "production_method",
+    "planting_season",
+]
 
 
 def catalog_files() -> list[Path]:
@@ -52,11 +58,16 @@ def catalog_files() -> list[Path]:
     return files
 
 
-def _enrich_from(path: Path, fields: list[str], db_path: Path | str | None) -> dict:
+def _enrich_from(
+    path: Path,
+    fields: list[str],
+    db_path: Path | str | None,
+    by: str = "binomial",
+) -> dict:
     if not path.exists():
         return {"updated": 0, "source": path.name, "missing": True}
-    lookup = lookup_from_csv(path)
-    result = enrich_empty_fields(lookup, fields, db_path=db_path)
+    lookup = lookup_from_csv(path, by=by)
+    result = enrich_empty_fields(lookup, fields, db_path=db_path, by=by)
     result["source"] = path.name
     return result
 
@@ -85,6 +96,12 @@ def load_default_catalog(db_path: Path | str | None = None) -> dict:
         _enrich_from(EXTERNAL_DIR / "iucn_conservation_status.csv", IUCN_ENRICH_FIELDS, db_path),
         _enrich_from(EXTERNAL_DIR / "mda_cold_hardiness.csv", MDA_ENRICH_FIELDS, db_path),
         _enrich_from(EXTERNAL_DIR / "trees_and_shrubs_online.csv", TSO_ENRICH_FIELDS, db_path),
+        _enrich_from(
+            EXTERNAL_DIR / "dgh_production_method.csv",
+            DGH_ENRICH_FIELDS,
+            db_path,
+            by="genus",
+        ),
     ]
     conn = connect(db_path)
     try:

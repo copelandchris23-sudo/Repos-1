@@ -33,6 +33,15 @@ def test_map_headers_understands_hardiness_zone():
     assert mapping["RHS Hardiness Rating"] == "extra:RHS Hardiness Rating"
 
 
+def test_map_headers_understands_dgh_production_fields():
+    mapping = map_headers(["Genus", "Thin-barked", "Coarse Roots", "Production method", "PLANTING SEASON"])
+    assert mapping["Genus"] == "genus"
+    assert mapping["Thin-barked"] == "thin_barked"
+    assert mapping["Coarse Roots"] == "coarse_roots"
+    assert mapping["Production method"] == "production_method"
+    assert mapping["PLANTING SEASON"] == "planting_season"
+
+
 def test_map_headers_understands_2021_catalog_names():
     mapping = map_headers(["Botanic", "comm_ful", "Habit (tree, shrub, vine)", "Max Height (ft)"])
     assert mapping["Botanic"] == "scientific_name"
